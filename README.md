@@ -85,6 +85,18 @@ pnpm exec decknow comments list
 pnpm exec decknow comments show 1
 ```
 
+Build the single-file browser runtime from the modular source:
+
+```bash
+pnpm build:runtime
+```
+
+Run unit tests:
+
+```bash
+pnpm test
+```
+
 ## Current Packages
 
 ```txt
@@ -93,6 +105,10 @@ packages/schema             First-pass schema and element manifest
 packages/cli                Local dev/validate/screenshot/inspect/comments CLI
 examples/basic.html         First example deck
 ```
+
+The runtime source lives in `packages/runtime-standard/src/` and is built into
+`packages/runtime-standard/decknow.js`. The current plugin foundation is
+documented in `docs/plugin-system.md`.
 
 The current built-in default theme is `terminal-green`. It is intentionally kept
 inside `packages/runtime-standard` for the first local-development version so a

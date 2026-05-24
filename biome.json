@@ -1,7 +1,14 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
   "files": {
-    "includes": ["**", "!node_modules", "!.decknow-runs", "!dist", "!coverage"]
+    "includes": [
+      "**",
+      "!node_modules",
+      "!.decknow-runs",
+      "!dist",
+      "!coverage",
+      "!packages/runtime-standard/decknow.js"
+    ]
   },
   "formatter": {
     "enabled": true,

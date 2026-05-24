@@ -4,19 +4,24 @@
   "type": "module",
   "packageManager": "pnpm@10.15.0",
   "scripts": {
+    "build:runtime": "node scripts/build-runtime.mjs",
     "dev": "node packages/cli/bin/decknow.js dev examples/basic.html",
     "comments": "node packages/cli/bin/decknow.js comments latest",
     "fmt": "biome format --write .",
     "inspect": "node packages/cli/bin/decknow.js inspect examples/project-overview.html --slide 4 --viewport 1440x900",
     "lint": "biome check .",
-    "precommit": "biome check . && node packages/cli/bin/decknow.js validate examples/basic.html && node packages/cli/bin/decknow.js validate examples/project-overview.html",
+    "precommit": "node scripts/precommit.mjs",
+    "test": "vitest run",
     "validate": "node packages/cli/bin/decknow.js validate examples/basic.html && node packages/cli/bin/decknow.js validate examples/project-overview.html",
     "screenshot": "node packages/cli/bin/decknow.js screenshot examples/basic.html --slide 1"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
     "@decknow/cli": "workspace:*",
+    "esbuild": "^0.28.0",
+    "happy-dom": "^20.9.0",
     "playwright": "^1.52.0",
+    "vitest": "^4.1.7",
     "yargs": "^17.7.2"
   }
 }

@@ -1,111 +1,304 @@
-const DECKNOW_VERSION = "0.0.1";
-const RUNTIME_KEY = "__DECKNOW__";
-
-const runtimeState = {
-  decks: [],
-  activeDeck: null,
-  resolveReady: null,
-};
-
-const runtimeReady = new Promise((resolve) => {
-  runtimeState.resolveReady = resolve;
-});
-
-function isDebugEnabled() {
-  return (
-    new URLSearchParams(window.location.search).has("debug") ||
-    window.location.hash.includes("debug=1") ||
-    window.localStorage?.getItem("decknow:debug") === "1" ||
-    document.querySelector("dk-deck[debug]") !== null
-  );
-}
-
-function formatDebugValue(value) {
-  if (typeof value === "string") return value;
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
+(() => {
+  // packages/runtime-standard/src/plugin-registry.js
+  var PLUGIN_NAME_PATTERN = /^[a-z0-9][a-z0-9-:.]*$/;
+  function createPluginRegistry(environment = {}) {
+    const env = resolveEnvironment(environment);
+    const plugins = /* @__PURE__ */ new Map();
+    const elementOwners = /* @__PURE__ */ new Map();
+    const selectableSelectors = /* @__PURE__ */ new Set();
+    const themeOwners = /* @__PURE__ */ new Map();
+    function registerPlugin(plugin) {
+      const record = normalizePlugin(plugin);
+      assertCanRegister(record);
+      for (const [name, klass] of Object.entries(record.elements)) {
+        registerElement(name, klass, record.name);
+      }
+      for (const selector of record.selectable) {
+        selectableSelectors.add(selector);
+      }
+      for (const theme of record.themes) {
+        if (themeOwners.has(theme)) {
+          throw new Error(
+            `Decknow theme "${theme}" is already provided by plugin "${themeOwners.get(theme)}".`
+          );
+        }
+        themeOwners.set(theme, record.name);
+      }
+      const styleIds = injectPluginStyles(record);
+      record.styleIds = styleIds;
+      plugins.set(record.name, record);
+      return pluginSummary(record);
+    }
+    function assertCanRegister(record) {
+      if (plugins.has(record.name)) {
+        throw new Error(`Decknow plugin "${record.name}" is already registered.`);
+      }
+      for (const [name, klass] of Object.entries(record.elements)) {
+        if (!name.includes("-")) {
+          throw new Error(
+            `Custom element "${name}" from plugin "${record.name}" must include a hyphen.`
+          );
+        }
+        if (typeof klass !== "function") {
+          throw new Error(
+            `Custom element "${name}" from plugin "${record.name}" must be a constructor.`
+          );
+        }
+        if (elementOwners.has(name)) {
+          throw new Error(
+            `Custom element "${name}" is already registered by plugin "${elementOwners.get(name)}".`
+          );
+        }
+        if (env.customElements?.get(name)) {
+          throw new Error(`Custom element "${name}" is already defined outside Decknow plugins.`);
+        }
+      }
+      for (const theme of record.themes) {
+        if (themeOwners.has(theme)) {
+          throw new Error(
+            `Decknow theme "${theme}" is already provided by plugin "${themeOwners.get(theme)}".`
+          );
+        }
+      }
+    }
+    function registerElement(name, klass, pluginName) {
+      env.customElements?.define(name, klass);
+      elementOwners.set(name, pluginName);
+    }
+    function injectPluginStyles(record) {
+      if (!record.styles.length || !env.document) return [];
+      const ids = [];
+      const host = env.document.head || env.document.documentElement;
+      for (const styleEntry of record.styles) {
+        const id = pluginStyleId(record.name, styleEntry.id);
+        ids.push(id);
+        if (env.document.getElementById(id)) continue;
+        const style = env.document.createElement("style");
+        style.id = id;
+        style.dataset.dkPlugin = record.name;
+        style.textContent = styleEntry.css;
+        host.appendChild(style);
+      }
+      return ids;
+    }
+    function getPlugin(name) {
+      const record = plugins.get(name);
+      return record ? pluginSummary(record) : null;
+    }
+    function getPlugins() {
+      return Array.from(plugins.values(), pluginSummary);
+    }
+    function getSelectableSelectors() {
+      return Array.from(selectableSelectors);
+    }
+    function getElementNames() {
+      return Array.from(elementOwners.keys());
+    }
+    function getThemeNames() {
+      return Array.from(themeOwners.keys());
+    }
+    function getManifest() {
+      return {
+        plugins: getPlugins(),
+        elements: getElementNames(),
+        selectable: getSelectableSelectors(),
+        themes: getThemeNames()
+      };
+    }
+    return {
+      registerPlugin,
+      getPlugin,
+      getPlugins,
+      getSelectableSelectors,
+      getElementNames,
+      getThemeNames,
+      getManifest
+    };
   }
-}
+  function normalizePlugin(plugin) {
+    if (!plugin || typeof plugin !== "object") {
+      throw new Error("Decknow plugin must be an object.");
+    }
+    if (!plugin.name || typeof plugin.name !== "string") {
+      throw new Error("Decknow plugin requires a string name.");
+    }
+    if (!PLUGIN_NAME_PATTERN.test(plugin.name)) {
+      throw new Error(
+        `Decknow plugin name "${plugin.name}" must use lowercase letters, numbers, hyphens, colons, or dots.`
+      );
+    }
+    const elements = normalizeElements(plugin.elements);
+    return {
+      name: plugin.name,
+      version: plugin.version || "0.0.0",
+      kind: plugin.kind || "component",
+      elements,
+      selectable: normalizeStringList(plugin.selectable, Object.keys(elements)),
+      themes: normalizeStringList(plugin.themes, []),
+      styles: normalizeStyles(plugin.styles),
+      schema: plugin.schema || null,
+      meta: plugin.meta || {}
+    };
+  }
+  function normalizeElements(elements = {}) {
+    if (Array.isArray(elements)) {
+      return Object.fromEntries(elements);
+    }
+    if (!elements || typeof elements !== "object") return {};
+    return { ...elements };
+  }
+  function normalizeStyles(styles) {
+    if (!styles) return [];
+    const entries = Array.isArray(styles) ? styles : [styles];
+    return entries.map((entry, index) => {
+      if (typeof entry === "string")
+        return { id: index === 0 ? "default" : String(index), css: entry };
+      if (!entry || typeof entry !== "object") return null;
+      return {
+        id: entry.id || (index === 0 ? "default" : String(index)),
+        css: String(entry.css || "")
+      };
+    }).filter((entry) => entry?.css);
+  }
+  function normalizeStringList(value, fallback) {
+    if (value === void 0 || value === null) return [...fallback];
+    if (Array.isArray(value)) return value.map(String).filter(Boolean);
+    if (typeof value === "object") return Object.keys(value);
+    return [String(value)].filter(Boolean);
+  }
+  function pluginSummary(record) {
+    return {
+      name: record.name,
+      version: record.version,
+      kind: record.kind,
+      elements: Object.keys(record.elements),
+      selectable: [...record.selectable],
+      themes: [...record.themes],
+      styleIds: [...record.styleIds || []],
+      schema: record.schema,
+      meta: record.meta
+    };
+  }
+  function pluginStyleId(pluginName, styleId) {
+    return `decknow-plugin-${safeId(pluginName)}-${safeId(styleId || "default")}-styles`;
+  }
+  function safeId(value) {
+    return String(value).replace(/[^a-zA-Z0-9_-]/g, "-");
+  }
+  function resolveEnvironment(environment) {
+    return {
+      document: environment.document || globalThis.document,
+      customElements: environment.customElements || globalThis.customElements
+    };
+  }
 
-function appendDebugLine(...args) {
-  const panel = document.getElementById("decknow-debug-panel");
-  if (!panel) return;
-  const line = document.createElement("div");
-  line.textContent = args.map(formatDebugValue).join(" ");
-  panel.appendChild(line);
-  while (panel.childNodes.length > 18) panel.removeChild(panel.firstChild);
-  panel.scrollTop = panel.scrollHeight;
-}
-
-function debugLog(...args) {
-  if (!isDebugEnabled()) return;
-  window.__DECKNOW_DEBUG__ ||= [];
-  window.__DECKNOW_DEBUG__.push(args);
-  console.debug("[decknow]", ...args);
-  appendDebugLine("[decknow]", ...args);
-}
-
-function exportDebugText() {
-  return JSON.stringify(
-    {
-      debug: window.__DECKNOW_DEBUG__ || [],
-      state: window.__DECKNOW__?.screenshotState?.() || null,
-      url: window.location.href,
-      userAgent: navigator.userAgent,
-    },
-    null,
-    2
-  );
-}
-
-window.__DECKNOW_DEBUG_TEXT__ = exportDebugText;
-window.__DECKNOW_COPY_DEBUG__ = async () => {
-  const text = exportDebugText();
-  await navigator.clipboard?.writeText(text);
-  return text;
-};
-
-function canUseHistoryState() {
-  return window.location.protocol !== "file:";
-}
-
-function createRuntimeApi() {
-  return {
-    version: DECKNOW_VERSION,
-    ready: runtimeReady,
-    get decks() {
-      return runtimeState.decks;
-    },
-    get activeDeck() {
-      return runtimeState.activeDeck;
-    },
-    getSlideCount() {
-      return runtimeState.activeDeck?.getSlideCount() ?? 0;
-    },
-    goToSlide(index) {
-      return runtimeState.activeDeck?.goToSlide(index) ?? Promise.resolve();
-    },
-    setStep(step) {
-      return runtimeState.activeDeck?.setStep(step) ?? Promise.resolve();
-    },
-    screenshotState() {
-      return runtimeState.activeDeck?.screenshotState() ?? null;
-    },
+  // packages/runtime-standard/src/decknow.js
+  var DECKNOW_VERSION = "0.0.1";
+  var RUNTIME_KEY = "__DECKNOW__";
+  var runtimeState = {
+    decks: [],
+    activeDeck: null,
+    resolveReady: null
   };
-}
-
-if (!window[RUNTIME_KEY]) {
-  window[RUNTIME_KEY] = createRuntimeApi();
-}
-
-function injectStyles() {
-  if (document.getElementById("decknow-runtime-styles")) return;
-
-  const style = document.createElement("style");
-  style.id = "decknow-runtime-styles";
-  style.textContent = `
+  var runtimeReady = new Promise((resolve) => {
+    runtimeState.resolveReady = resolve;
+  });
+  var pluginRegistry = createPluginRegistry();
+  function isDebugEnabled() {
+    return new URLSearchParams(window.location.search).has("debug") || window.location.hash.includes("debug=1") || window.localStorage?.getItem("decknow:debug") === "1" || document.querySelector("dk-deck[debug]") !== null;
+  }
+  function formatDebugValue(value) {
+    if (typeof value === "string") return value;
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  function appendDebugLine(...args) {
+    const panel = document.getElementById("decknow-debug-panel");
+    if (!panel) return;
+    const line = document.createElement("div");
+    line.textContent = args.map(formatDebugValue).join(" ");
+    panel.appendChild(line);
+    while (panel.childNodes.length > 18) panel.removeChild(panel.firstChild);
+    panel.scrollTop = panel.scrollHeight;
+  }
+  function debugLog(...args) {
+    if (!isDebugEnabled()) return;
+    window.__DECKNOW_DEBUG__ ||= [];
+    window.__DECKNOW_DEBUG__.push(args);
+    console.debug("[decknow]", ...args);
+    appendDebugLine("[decknow]", ...args);
+  }
+  function exportDebugText() {
+    return JSON.stringify(
+      {
+        debug: window.__DECKNOW_DEBUG__ || [],
+        state: window.__DECKNOW__?.screenshotState?.() || null,
+        url: window.location.href,
+        userAgent: navigator.userAgent
+      },
+      null,
+      2
+    );
+  }
+  window.__DECKNOW_DEBUG_TEXT__ = exportDebugText;
+  window.__DECKNOW_COPY_DEBUG__ = async () => {
+    const text = exportDebugText();
+    await navigator.clipboard?.writeText(text);
+    return text;
+  };
+  function canUseHistoryState() {
+    return window.location.protocol !== "file:";
+  }
+  function createRuntimeApi() {
+    return {
+      version: DECKNOW_VERSION,
+      ready: runtimeReady,
+      get decks() {
+        return runtimeState.decks;
+      },
+      get activeDeck() {
+        return runtimeState.activeDeck;
+      },
+      getSlideCount() {
+        return runtimeState.activeDeck?.getSlideCount() ?? 0;
+      },
+      goToSlide(index) {
+        return runtimeState.activeDeck?.goToSlide(index) ?? Promise.resolve();
+      },
+      setStep(step) {
+        return runtimeState.activeDeck?.setStep(step) ?? Promise.resolve();
+      },
+      screenshotState() {
+        return runtimeState.activeDeck?.screenshotState() ?? null;
+      },
+      registerPlugin(plugin) {
+        return pluginRegistry.registerPlugin(plugin);
+      },
+      getPlugin(name) {
+        return pluginRegistry.getPlugin(name);
+      },
+      getPlugins() {
+        return pluginRegistry.getPlugins();
+      },
+      getSelectableSelectors() {
+        return pluginRegistry.getSelectableSelectors();
+      },
+      getRuntimeManifest() {
+        return pluginRegistry.getManifest();
+      }
+    };
+  }
+  if (!window[RUNTIME_KEY]) {
+    window[RUNTIME_KEY] = createRuntimeApi();
+  }
+  function injectStyles() {
+    if (document.getElementById("decknow-runtime-styles")) return;
+    const style = document.createElement("style");
+    style.id = "decknow-runtime-styles";
+    style.textContent = `
     :root,
     dk-deck,
     dk-deck[theme="terminal-green"] {
@@ -1122,561 +1315,501 @@ function injectStyles() {
       white-space: pre-wrap;
     }
   `;
-  document.head.appendChild(style);
-}
-
-function defineElement(name, klass) {
-  if (!customElements.get(name)) customElements.define(name, klass);
-}
-
-function afterChildrenParsed(element, callback) {
-  if (element.dataset.dkRenderScheduled === "true") return;
-  element.dataset.dkRenderScheduled = "true";
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", callback, { once: true });
-    return;
+    document.head.appendChild(style);
   }
-  queueMicrotask(callback);
-}
-
-function isEditableOrInteractiveTarget(target) {
-  return Boolean(
-    target?.closest?.(
-      'a, button, input, textarea, select, summary, [contenteditable="true"], [data-dk-swipe="ignore"]'
-    )
-  );
-}
-
-function hasTextSelection() {
-  const selection = window.getSelection?.();
-  return Boolean(selection && !selection.isCollapsed && selection.toString().trim());
-}
-
-class DKDeck extends HTMLElement {
-  connectedCallback() {
-    if (this.dataset.dkScheduled === "true") return;
-    this.dataset.dkScheduled = "true";
+  function afterChildrenParsed(element, callback) {
+    if (element.dataset.dkRenderScheduled === "true") return;
+    element.dataset.dkRenderScheduled = "true";
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => this.mount(), { once: true });
-    } else {
-      this.mount();
-    }
-  }
-
-  mount() {
-    if (this.dataset.dkMounted === "true") return;
-    this.dataset.dkMounted = "true";
-    injectStyles();
-    this.currentSlide = 0;
-    this.currentStep = 0;
-    this.slides = Array.from(this.querySelectorAll(":scope > dk-slide"));
-    if (!this.hasAttribute("tabindex")) this.setAttribute("tabindex", "0");
-    this.ensureSlideDots();
-    this.ensureDebugPanel();
-    this.setupKeyboard();
-    this.setupPointerNavigation();
-    this.goToSlide(this.readInitialSlide(), { silent: true });
-    this.focusDeck();
-
-    runtimeState.decks.push(this);
-    runtimeState.activeDeck = this;
-    runtimeState.resolveReady?.(this);
-    document.dispatchEvent(new CustomEvent("decknow:ready", { detail: { deck: this } }));
-    debugLog("ready", this.screenshotState());
-  }
-
-  readInitialSlide() {
-    const hash = window.location.hash.match(/slide-(\d+)/);
-    if (!hash) return 0;
-    return Math.max(0, Number(hash[1]) - 1);
-  }
-
-  ensureSlideDots() {
-    this.refreshSlides();
-    const existing = this.querySelector(":scope > .dk-slide-dots");
-    const dots = existing || document.createElement("nav");
-    dots.className = "dk-slide-dots";
-    dots.setAttribute("aria-label", "Slide progress");
-    dots.innerHTML = "";
-
-    this.slides.forEach((_, index) => {
-      const dot = document.createElement("span");
-      dot.className = "dk-slide-dot";
-      dot.setAttribute("aria-label", `Slide ${index + 1} of ${this.slides.length}`);
-      const text = document.createElement("span");
-      text.className = "dk-slide-dot__text";
-      text.textContent = `Slide ${index + 1} of ${this.slides.length}`;
-      dot.appendChild(text);
-      dots.appendChild(dot);
-    });
-
-    if (!existing) this.appendChild(dots);
-  }
-
-  showSlideDots() {
-    const dots = this.querySelector(":scope > .dk-slide-dots");
-    if (!dots) return;
-    dots.dataset.visible = "true";
-    clearTimeout(this._slideDotsTimer);
-    this._slideDotsTimer = setTimeout(() => {
-      dots.dataset.visible = "false";
-    }, 1200);
-  }
-
-  setupKeyboard() {
-    if (this._keyboardReady) return;
-    this._keyboardReady = true;
-    const handleKey = (event) => {
-      if (runtimeState.activeDeck && runtimeState.activeDeck !== this) return;
-      const tagName = event.target?.tagName?.toLowerCase();
-      debugLog("keydown", {
-        key: event.key,
-        code: event.code,
-        keyCode: event.keyCode || event.which,
-        metaKey: event.metaKey,
-        ctrlKey: event.ctrlKey,
-        altKey: event.altKey,
-        target: tagName,
-        defaultPrevented: event.defaultPrevented,
-        slide: this.currentSlide + 1,
-      });
-      if (event.defaultPrevented) return;
-      if (event.metaKey || event.ctrlKey || event.altKey) {
-        debugLog("keydown ignored modifier shortcut");
-        return;
-      }
-      if (["input", "textarea", "select", "button", "a"].includes(tagName)) {
-        debugLog("keydown ignored target", tagName);
-        return;
-      }
-
-      const key = event.key || "";
-      const code = event.code || "";
-      const keyCode = event.keyCode || event.which;
-      const isNext =
-        key === "ArrowRight" ||
-        key === "ArrowDown" ||
-        key === "Right" ||
-        key === "Down" ||
-        key === "PageDown" ||
-        key === " " ||
-        key === "Spacebar" ||
-        code === "ArrowRight" ||
-        code === "ArrowDown" ||
-        code === "PageDown" ||
-        code === "Space" ||
-        keyCode === 39 ||
-        keyCode === 40 ||
-        keyCode === 34 ||
-        keyCode === 32;
-      const isPrevious =
-        key === "ArrowLeft" ||
-        key === "ArrowUp" ||
-        key === "Left" ||
-        key === "Up" ||
-        key === "PageUp" ||
-        code === "ArrowLeft" ||
-        code === "ArrowUp" ||
-        code === "PageUp" ||
-        keyCode === 37 ||
-        keyCode === 38 ||
-        keyCode === 33;
-
-      if (isNext) {
-        event.preventDefault();
-        debugLog("nav next");
-        this.next();
-        return;
-      }
-
-      if (isPrevious) {
-        event.preventDefault();
-        debugLog("nav previous");
-        this.previous();
-        return;
-      }
-
-      debugLog("keydown no match");
-    };
-
-    window.addEventListener("keydown", handleKey, { capture: true, passive: false });
-  }
-
-  setupPointerNavigation() {
-    if (this._pointerNavigationReady) return;
-    this._pointerNavigationReady = true;
-    if (this.getAttribute("swipe") === "none") return;
-
-    const swipe = {
-      active: false,
-      pointerId: null,
-      startX: 0,
-      startY: 0,
-      lastX: 0,
-      lastY: 0,
-      intent: null,
-      startedAt: 0,
-    };
-
-    const resetSwipe = () => {
-      swipe.active = false;
-      swipe.pointerId = null;
-      swipe.intent = null;
-    };
-
-    this.addEventListener(
-      "pointerdown",
-      (event) => {
-        if (event.pointerType && !["touch", "pen"].includes(event.pointerType)) return;
-        if (!event.isPrimary || isEditableOrInteractiveTarget(event.target)) return;
-        if (hasTextSelection()) return;
-
-        swipe.active = true;
-        swipe.pointerId = event.pointerId;
-        swipe.startX = event.clientX;
-        swipe.startY = event.clientY;
-        swipe.lastX = event.clientX;
-        swipe.lastY = event.clientY;
-        swipe.intent = null;
-        swipe.startedAt = performance.now();
-      },
-      { passive: true }
-    );
-
-    this.addEventListener(
-      "pointermove",
-      (event) => {
-        if (!swipe.active || event.pointerId !== swipe.pointerId) return;
-
-        swipe.lastX = event.clientX;
-        swipe.lastY = event.clientY;
-        const dx = swipe.lastX - swipe.startX;
-        const dy = swipe.lastY - swipe.startY;
-        const absX = Math.abs(dx);
-        const absY = Math.abs(dy);
-
-        if (!swipe.intent && (absX > 10 || absY > 10)) {
-          swipe.intent = absX > absY * 1.25 ? "horizontal" : "vertical";
-        }
-
-        if (swipe.intent === "vertical" && event.cancelable) {
-          event.preventDefault();
-        }
-      },
-      { passive: false }
-    );
-
-    this.addEventListener(
-      "pointerup",
-      (event) => {
-        if (!swipe.active || event.pointerId !== swipe.pointerId) return;
-
-        const dx = event.clientX - swipe.startX;
-        const dy = event.clientY - swipe.startY;
-        const absX = Math.abs(dx);
-        const absY = Math.abs(dy);
-        const elapsed = performance.now() - swipe.startedAt;
-        const threshold = Math.max(44, Math.min(96, window.innerHeight * 0.07));
-        const isSwipe = absY >= threshold && absY > absX * 1.25 && elapsed < 1200;
-
-        resetSwipe();
-
-        if (!isSwipe || hasTextSelection()) return;
-        debugLog("swipe", {
-          direction: dy < 0 ? "next" : "previous",
-          dx: Math.round(dx),
-          dy: Math.round(dy),
-          elapsed: Math.round(elapsed),
-          threshold: Math.round(threshold),
-        });
-
-        if (dy < 0) {
-          this.next();
-        } else {
-          this.previous();
-        }
-      },
-      { passive: true }
-    );
-
-    this.addEventListener("pointercancel", resetSwipe, { passive: true });
-    this.addEventListener("lostpointercapture", resetSwipe, { passive: true });
-  }
-
-  focusDeck() {
-    requestAnimationFrame(() => {
-      this.focus({ preventScroll: true });
-      document.body?.setAttribute("tabindex", "-1");
-      debugLog("focus", document.activeElement?.tagName);
-    });
-  }
-
-  ensureDebugPanel() {
-    if (!isDebugEnabled() || document.getElementById("decknow-debug-panel")) return;
-    const panel = document.createElement("div");
-    panel.id = "decknow-debug-panel";
-    panel.className = "dk-debug-panel";
-    panel.setAttribute("role", "log");
-    panel.setAttribute("aria-live", "polite");
-    const title = document.createElement("div");
-    title.textContent = "[decknow] debug enabled";
-    const hint = document.createElement("div");
-    hint.textContent = "Press ArrowRight / ArrowLeft. In console run: __DECKNOW_DEBUG_TEXT__()";
-    panel.append(title, hint);
-    document.body.appendChild(panel);
-  }
-
-  getSlideCount() {
-    this.refreshSlides();
-    return this.slides.length;
-  }
-
-  refreshSlides() {
-    this.slides = Array.from(this.querySelectorAll(":scope > dk-slide"));
-  }
-
-  next() {
-    return this.goToSlide(this.currentSlide + 1);
-  }
-
-  previous() {
-    return this.goToSlide(this.currentSlide - 1);
-  }
-
-  async goToSlide(index, options = {}) {
-    this.refreshSlides();
-    if (!this.slides.length) return;
-    const target = Math.max(0, Math.min(this.slides.length - 1, Number(index) || 0));
-    this.currentSlide = target;
-    this.currentStep = 0;
-
-    this.slides.forEach((slide, slideIndex) => {
-      const active = slideIndex === target;
-      if (active) {
-        slide.setAttribute("data-active", "true");
-      } else {
-        slide.removeAttribute("data-active");
-      }
-      slide.setAttribute("aria-hidden", active ? "false" : "true");
-    });
-
-    this.updateSlideDots();
-    if (!options.silent) this.showSlideDots();
-    if (!options.silent && canUseHistoryState()) {
-      try {
-        history.replaceState(null, "", `#slide-${target + 1}`);
-      } catch (error) {
-        debugLog("history update failed", error?.message || String(error));
-      }
-    }
-    if (document.activeElement === document.body || document.activeElement === null) {
-      this.focusDeck();
-    }
-    await this.settle();
-  }
-
-  async setStep(step) {
-    this.currentStep = Math.max(0, Number(step) || 0);
-    await this.settle();
-  }
-
-  async settle() {
-    await document.fonts?.ready;
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-  }
-
-  updateSlideDots() {
-    const dots = Array.from(this.querySelectorAll(":scope > .dk-slide-dots .dk-slide-dot"));
-    if (dots.length !== this.slides.length) {
-      this.ensureSlideDots();
-      return this.updateSlideDots();
-    }
-
-    dots.forEach((dot, index) => {
-      const active = index === this.currentSlide;
-      dot.setAttribute("aria-current", active ? "true" : "false");
-      dot.dataset.active = active ? "true" : "false";
-    });
-  }
-
-  screenshotState() {
-    return {
-      version: DECKNOW_VERSION,
-      slideIndex: this.currentSlide,
-      slideNumber: this.currentSlide + 1,
-      step: this.currentStep,
-      slideCount: this.getSlideCount(),
-      theme: this.getAttribute("theme") || "terminal-green",
-      fit: this.getAttribute("fit") || "contain",
-      viewport: {
-        width: window.innerWidth,
-        height: window.innerHeight,
-        orientation: window.innerWidth >= window.innerHeight ? "landscape" : "portrait",
-      },
-    };
-  }
-}
-
-class DKSlide extends HTMLElement {
-  connectedCallback() {
-    if (!this.hasAttribute("role")) this.setAttribute("role", "group");
-    if (!this.hasAttribute("aria-roledescription")) {
-      this.setAttribute("aria-roledescription", "slide");
-    }
-  }
-}
-
-class DKLink extends HTMLElement {
-  connectedCallback() {
-    afterChildrenParsed(this, () => this.render());
-  }
-
-  render() {
-    if (this.dataset.dkRendered === "true") return;
-    this.dataset.dkRendered = "true";
-    const anchor = document.createElement("a");
-    anchor.href = this.getAttribute("href") || "#";
-    anchor.target = this.getAttribute("target") || "_blank";
-    anchor.rel = this.getAttribute("rel") || "noopener noreferrer";
-    while (this.firstChild) anchor.appendChild(this.firstChild);
-    this.appendChild(anchor);
-  }
-}
-
-class DKCode extends HTMLElement {
-  connectedCallback() {
-    afterChildrenParsed(this, () => this.render());
-  }
-
-  render() {
-    if (this.dataset.dkRendered === "true") return;
-    this.dataset.dkRendered = "true";
-    const text = this.hasAttribute("inline")
-      ? this.textContent.trim()
-      : this.textContent.replace(/^\n/, "").replace(/\n\s*$/, "");
-    this.textContent = "";
-    const code = document.createElement("code");
-    code.textContent = text;
-    const language = this.getAttribute("language");
-    if (language) code.className = `language-${language}`;
-
-    if (this.hasAttribute("inline")) {
-      this.appendChild(code);
+      document.addEventListener("DOMContentLoaded", callback, { once: true });
       return;
     }
-
-    const pre = document.createElement("pre");
-    pre.appendChild(code);
-    this.appendChild(pre);
+    queueMicrotask(callback);
   }
-}
-
-class DKItem extends HTMLElement {
-  connectedCallback() {
-    afterChildrenParsed(this, () => this.render());
+  function isEditableOrInteractiveTarget(target) {
+    return Boolean(
+      target?.closest?.(
+        'a, button, input, textarea, select, summary, [contenteditable="true"], [data-dk-swipe="ignore"]'
+      )
+    );
   }
-
-  render() {
-    if (this.dataset.dkRendered === "true") return;
-    this.dataset.dkRendered = "true";
-    if (this.querySelector(":scope > .dk-item__body")) return;
-    const body = document.createElement("span");
-    body.className = "dk-item__body";
-    while (this.firstChild) body.appendChild(this.firstChild);
-    this.appendChild(body);
+  function hasTextSelection() {
+    const selection = window.getSelection?.();
+    return Boolean(selection && !selection.isCollapsed && selection.toString().trim());
   }
-}
-
-class DKTable extends HTMLElement {
-  connectedCallback() {
-    afterChildrenParsed(this, () => this.updateColumns());
-  }
-
-  updateColumns() {
-    const rows = Array.from(this.querySelectorAll(":scope > dk-row, :scope > dk-tr"));
-    const maxColumns = rows.reduce((max, row) => {
-      const count = row.querySelectorAll(":scope > dk-cell, :scope > dk-th, :scope > dk-td").length;
-      return Math.max(max, count);
-    }, 1);
-    this.style.setProperty("--dk-table-columns", String(maxColumns));
-  }
-}
-
-class DKGrid extends HTMLElement {
-  static observedAttributes = ["columns", "rows", "gap"];
-
-  connectedCallback() {
-    this.syncGrid();
-  }
-
-  attributeChangedCallback() {
-    this.syncGrid();
-  }
-
-  syncGrid() {
-    const columns = clampInteger(this.getAttribute("columns"), 1, 6, 2);
-    const rows = clampInteger(this.getAttribute("rows"), 1, 6, null);
-    this.style.setProperty("--dk-grid-columns", String(columns));
-    if (rows) {
-      this.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
+  var DKDeck = class extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.dkScheduled === "true") return;
+      this.dataset.dkScheduled = "true";
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", () => this.mount(), { once: true });
+      } else {
+        this.mount();
+      }
     }
+    mount() {
+      if (this.dataset.dkMounted === "true") return;
+      this.dataset.dkMounted = "true";
+      injectStyles();
+      this.currentSlide = 0;
+      this.currentStep = 0;
+      this.slides = Array.from(this.querySelectorAll(":scope > dk-slide"));
+      if (!this.hasAttribute("tabindex")) this.setAttribute("tabindex", "0");
+      this.ensureSlideDots();
+      this.ensureDebugPanel();
+      this.setupKeyboard();
+      this.setupPointerNavigation();
+      this.goToSlide(this.readInitialSlide(), { silent: true });
+      this.focusDeck();
+      runtimeState.decks.push(this);
+      runtimeState.activeDeck = this;
+      runtimeState.resolveReady?.(this);
+      document.dispatchEvent(new CustomEvent("decknow:ready", { detail: { deck: this } }));
+      debugLog("ready", this.screenshotState());
+    }
+    readInitialSlide() {
+      const hash = window.location.hash.match(/slide-(\d+)/);
+      if (!hash) return 0;
+      return Math.max(0, Number(hash[1]) - 1);
+    }
+    ensureSlideDots() {
+      this.refreshSlides();
+      const existing = this.querySelector(":scope > .dk-slide-dots");
+      const dots = existing || document.createElement("nav");
+      dots.className = "dk-slide-dots";
+      dots.setAttribute("aria-label", "Slide progress");
+      dots.innerHTML = "";
+      this.slides.forEach((_, index) => {
+        const dot = document.createElement("span");
+        dot.className = "dk-slide-dot";
+        dot.setAttribute("aria-label", `Slide ${index + 1} of ${this.slides.length}`);
+        const text = document.createElement("span");
+        text.className = "dk-slide-dot__text";
+        text.textContent = `Slide ${index + 1} of ${this.slides.length}`;
+        dot.appendChild(text);
+        dots.appendChild(dot);
+      });
+      if (!existing) this.appendChild(dots);
+    }
+    showSlideDots() {
+      const dots = this.querySelector(":scope > .dk-slide-dots");
+      if (!dots) return;
+      dots.dataset.visible = "true";
+      clearTimeout(this._slideDotsTimer);
+      this._slideDotsTimer = setTimeout(() => {
+        dots.dataset.visible = "false";
+      }, 1200);
+    }
+    setupKeyboard() {
+      if (this._keyboardReady) return;
+      this._keyboardReady = true;
+      const handleKey = (event) => {
+        if (runtimeState.activeDeck && runtimeState.activeDeck !== this) return;
+        const tagName = event.target?.tagName?.toLowerCase();
+        debugLog("keydown", {
+          key: event.key,
+          code: event.code,
+          keyCode: event.keyCode || event.which,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          altKey: event.altKey,
+          target: tagName,
+          defaultPrevented: event.defaultPrevented,
+          slide: this.currentSlide + 1
+        });
+        if (event.defaultPrevented) return;
+        if (event.metaKey || event.ctrlKey || event.altKey) {
+          debugLog("keydown ignored modifier shortcut");
+          return;
+        }
+        if (["input", "textarea", "select", "button", "a"].includes(tagName)) {
+          debugLog("keydown ignored target", tagName);
+          return;
+        }
+        const key = event.key || "";
+        const code = event.code || "";
+        const keyCode = event.keyCode || event.which;
+        const isNext = key === "ArrowRight" || key === "ArrowDown" || key === "Right" || key === "Down" || key === "PageDown" || key === " " || key === "Spacebar" || code === "ArrowRight" || code === "ArrowDown" || code === "PageDown" || code === "Space" || keyCode === 39 || keyCode === 40 || keyCode === 34 || keyCode === 32;
+        const isPrevious = key === "ArrowLeft" || key === "ArrowUp" || key === "Left" || key === "Up" || key === "PageUp" || code === "ArrowLeft" || code === "ArrowUp" || code === "PageUp" || keyCode === 37 || keyCode === 38 || keyCode === 33;
+        if (isNext) {
+          event.preventDefault();
+          debugLog("nav next");
+          this.next();
+          return;
+        }
+        if (isPrevious) {
+          event.preventDefault();
+          debugLog("nav previous");
+          this.previous();
+          return;
+        }
+        debugLog("keydown no match");
+      };
+      window.addEventListener("keydown", handleKey, { capture: true, passive: false });
+    }
+    setupPointerNavigation() {
+      if (this._pointerNavigationReady) return;
+      this._pointerNavigationReady = true;
+      if (this.getAttribute("swipe") === "none") return;
+      const swipe = {
+        active: false,
+        pointerId: null,
+        startX: 0,
+        startY: 0,
+        lastX: 0,
+        lastY: 0,
+        intent: null,
+        startedAt: 0
+      };
+      const resetSwipe = () => {
+        swipe.active = false;
+        swipe.pointerId = null;
+        swipe.intent = null;
+      };
+      this.addEventListener(
+        "pointerdown",
+        (event) => {
+          if (event.pointerType && !["touch", "pen"].includes(event.pointerType)) return;
+          if (!event.isPrimary || isEditableOrInteractiveTarget(event.target)) return;
+          if (hasTextSelection()) return;
+          swipe.active = true;
+          swipe.pointerId = event.pointerId;
+          swipe.startX = event.clientX;
+          swipe.startY = event.clientY;
+          swipe.lastX = event.clientX;
+          swipe.lastY = event.clientY;
+          swipe.intent = null;
+          swipe.startedAt = performance.now();
+        },
+        { passive: true }
+      );
+      this.addEventListener(
+        "pointermove",
+        (event) => {
+          if (!swipe.active || event.pointerId !== swipe.pointerId) return;
+          swipe.lastX = event.clientX;
+          swipe.lastY = event.clientY;
+          const dx = swipe.lastX - swipe.startX;
+          const dy = swipe.lastY - swipe.startY;
+          const absX = Math.abs(dx);
+          const absY = Math.abs(dy);
+          if (!swipe.intent && (absX > 10 || absY > 10)) {
+            swipe.intent = absX > absY * 1.25 ? "horizontal" : "vertical";
+          }
+          if (swipe.intent === "vertical" && event.cancelable) {
+            event.preventDefault();
+          }
+        },
+        { passive: false }
+      );
+      this.addEventListener(
+        "pointerup",
+        (event) => {
+          if (!swipe.active || event.pointerId !== swipe.pointerId) return;
+          const dx = event.clientX - swipe.startX;
+          const dy = event.clientY - swipe.startY;
+          const absX = Math.abs(dx);
+          const absY = Math.abs(dy);
+          const elapsed = performance.now() - swipe.startedAt;
+          const threshold = Math.max(44, Math.min(96, window.innerHeight * 0.07));
+          const isSwipe = absY >= threshold && absY > absX * 1.25 && elapsed < 1200;
+          resetSwipe();
+          if (!isSwipe || hasTextSelection()) return;
+          debugLog("swipe", {
+            direction: dy < 0 ? "next" : "previous",
+            dx: Math.round(dx),
+            dy: Math.round(dy),
+            elapsed: Math.round(elapsed),
+            threshold: Math.round(threshold)
+          });
+          if (dy < 0) {
+            this.next();
+          } else {
+            this.previous();
+          }
+        },
+        { passive: true }
+      );
+      this.addEventListener("pointercancel", resetSwipe, { passive: true });
+      this.addEventListener("lostpointercapture", resetSwipe, { passive: true });
+    }
+    focusDeck() {
+      requestAnimationFrame(() => {
+        this.focus({ preventScroll: true });
+        document.body?.setAttribute("tabindex", "-1");
+        debugLog("focus", document.activeElement?.tagName);
+      });
+    }
+    ensureDebugPanel() {
+      if (!isDebugEnabled() || document.getElementById("decknow-debug-panel")) return;
+      const panel = document.createElement("div");
+      panel.id = "decknow-debug-panel";
+      panel.className = "dk-debug-panel";
+      panel.setAttribute("role", "log");
+      panel.setAttribute("aria-live", "polite");
+      const title = document.createElement("div");
+      title.textContent = "[decknow] debug enabled";
+      const hint = document.createElement("div");
+      hint.textContent = "Press ArrowRight / ArrowLeft. In console run: __DECKNOW_DEBUG_TEXT__()";
+      panel.append(title, hint);
+      document.body.appendChild(panel);
+    }
+    getSlideCount() {
+      this.refreshSlides();
+      return this.slides.length;
+    }
+    refreshSlides() {
+      this.slides = Array.from(this.querySelectorAll(":scope > dk-slide"));
+    }
+    next() {
+      return this.goToSlide(this.currentSlide + 1);
+    }
+    previous() {
+      return this.goToSlide(this.currentSlide - 1);
+    }
+    async goToSlide(index, options = {}) {
+      this.refreshSlides();
+      if (!this.slides.length) return;
+      const target = Math.max(0, Math.min(this.slides.length - 1, Number(index) || 0));
+      this.currentSlide = target;
+      this.currentStep = 0;
+      this.slides.forEach((slide, slideIndex) => {
+        const active = slideIndex === target;
+        if (active) {
+          slide.setAttribute("data-active", "true");
+        } else {
+          slide.removeAttribute("data-active");
+        }
+        slide.setAttribute("aria-hidden", active ? "false" : "true");
+      });
+      this.updateSlideDots();
+      if (!options.silent) this.showSlideDots();
+      if (!options.silent && canUseHistoryState()) {
+        try {
+          history.replaceState(null, "", `#slide-${target + 1}`);
+        } catch (error) {
+          debugLog("history update failed", error?.message || String(error));
+        }
+      }
+      if (document.activeElement === document.body || document.activeElement === null) {
+        this.focusDeck();
+      }
+      await this.settle();
+    }
+    async setStep(step) {
+      this.currentStep = Math.max(0, Number(step) || 0);
+      await this.settle();
+    }
+    async settle() {
+      await document.fonts?.ready;
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
+    updateSlideDots() {
+      const dots = Array.from(this.querySelectorAll(":scope > .dk-slide-dots .dk-slide-dot"));
+      if (dots.length !== this.slides.length) {
+        this.ensureSlideDots();
+        return this.updateSlideDots();
+      }
+      dots.forEach((dot, index) => {
+        const active = index === this.currentSlide;
+        dot.setAttribute("aria-current", active ? "true" : "false");
+        dot.dataset.active = active ? "true" : "false";
+      });
+    }
+    screenshotState() {
+      return {
+        version: DECKNOW_VERSION,
+        slideIndex: this.currentSlide,
+        slideNumber: this.currentSlide + 1,
+        step: this.currentStep,
+        slideCount: this.getSlideCount(),
+        theme: this.getAttribute("theme") || "terminal-green",
+        fit: this.getAttribute("fit") || "contain",
+        viewport: {
+          width: window.innerWidth,
+          height: window.innerHeight,
+          orientation: window.innerWidth >= window.innerHeight ? "landscape" : "portrait"
+        }
+      };
+    }
+  };
+  var DKSlide = class extends HTMLElement {
+    connectedCallback() {
+      if (!this.hasAttribute("role")) this.setAttribute("role", "group");
+      if (!this.hasAttribute("aria-roledescription")) {
+        this.setAttribute("aria-roledescription", "slide");
+      }
+    }
+  };
+  var DKLink = class extends HTMLElement {
+    connectedCallback() {
+      afterChildrenParsed(this, () => this.render());
+    }
+    render() {
+      if (this.dataset.dkRendered === "true") return;
+      this.dataset.dkRendered = "true";
+      const anchor = document.createElement("a");
+      anchor.href = this.getAttribute("href") || "#";
+      anchor.target = this.getAttribute("target") || "_blank";
+      anchor.rel = this.getAttribute("rel") || "noopener noreferrer";
+      while (this.firstChild) anchor.appendChild(this.firstChild);
+      this.appendChild(anchor);
+    }
+  };
+  var DKCode = class extends HTMLElement {
+    connectedCallback() {
+      afterChildrenParsed(this, () => this.render());
+    }
+    render() {
+      if (this.dataset.dkRendered === "true") return;
+      this.dataset.dkRendered = "true";
+      const text = this.hasAttribute("inline") ? this.textContent.trim() : this.textContent.replace(/^\n/, "").replace(/\n\s*$/, "");
+      this.textContent = "";
+      const code = document.createElement("code");
+      code.textContent = text;
+      const language = this.getAttribute("language");
+      if (language) code.className = `language-${language}`;
+      if (this.hasAttribute("inline")) {
+        this.appendChild(code);
+        return;
+      }
+      const pre = document.createElement("pre");
+      pre.appendChild(code);
+      this.appendChild(pre);
+    }
+  };
+  var DKItem = class extends HTMLElement {
+    connectedCallback() {
+      afterChildrenParsed(this, () => this.render());
+    }
+    render() {
+      if (this.dataset.dkRendered === "true") return;
+      this.dataset.dkRendered = "true";
+      if (this.querySelector(":scope > .dk-item__body")) return;
+      const body = document.createElement("span");
+      body.className = "dk-item__body";
+      while (this.firstChild) body.appendChild(this.firstChild);
+      this.appendChild(body);
+    }
+  };
+  var DKTable = class extends HTMLElement {
+    connectedCallback() {
+      afterChildrenParsed(this, () => this.updateColumns());
+    }
+    updateColumns() {
+      const rows = Array.from(this.querySelectorAll(":scope > dk-row, :scope > dk-tr"));
+      const maxColumns = rows.reduce((max, row) => {
+        const count = row.querySelectorAll(":scope > dk-cell, :scope > dk-th, :scope > dk-td").length;
+        return Math.max(max, count);
+      }, 1);
+      this.style.setProperty("--dk-table-columns", String(maxColumns));
+    }
+  };
+  var DKGrid = class extends HTMLElement {
+    static observedAttributes = ["columns", "rows", "gap"];
+    connectedCallback() {
+      this.syncGrid();
+    }
+    attributeChangedCallback() {
+      this.syncGrid();
+    }
+    syncGrid() {
+      const columns = clampInteger(this.getAttribute("columns"), 1, 6, 2);
+      const rows = clampInteger(this.getAttribute("rows"), 1, 6, null);
+      this.style.setProperty("--dk-grid-columns", String(columns));
+      if (rows) {
+        this.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
+      }
+    }
+  };
+  var DKRegion = class extends HTMLElement {
+    static observedAttributes = ["span"];
+    connectedCallback() {
+      this.syncRegion();
+    }
+    attributeChangedCallback() {
+      this.syncRegion();
+    }
+    syncRegion() {
+      const span = clampInteger(this.getAttribute("span"), 1, 6, 1);
+      this.style.setProperty("--dk-region-span", String(span));
+    }
+  };
+  function clampInteger(value, min, max, fallback) {
+    if (value === null || value === void 0 || value === "") return fallback;
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed)) return fallback;
+    return Math.max(min, Math.min(max, parsed));
   }
-}
-
-class DKRegion extends HTMLElement {
-  static observedAttributes = ["span"];
-
-  connectedCallback() {
-    this.syncRegion();
+  var coreElements = {
+    "dk-deck": DKDeck,
+    "dk-slide": DKSlide,
+    "dk-title": plainElementClass(),
+    "dk-subtitle": plainElementClass(),
+    "dk-heading": plainElementClass(),
+    "dk-text": plainElementClass(),
+    "dk-list": plainElementClass(),
+    "dk-item": DKItem,
+    "dk-code": DKCode,
+    "dk-quote": plainElementClass(),
+    "dk-link": DKLink,
+    "dk-table": DKTable,
+    "dk-grid": DKGrid,
+    "dk-region": DKRegion,
+    "dk-stack": plainElementClass(),
+    "dk-raw": plainElementClass(),
+    "dk-row": plainElementClass(),
+    "dk-cell": plainElementClass(),
+    "dk-tr": plainElementClass(),
+    "dk-th": plainElementClass(),
+    "dk-td": plainElementClass(),
+    "dk-strong": plainElementClass(),
+    "dk-em": plainElementClass()
+  };
+  var coreSelectableElements = [
+    "dk-slide",
+    "dk-title",
+    "dk-subtitle",
+    "dk-heading",
+    "dk-text",
+    "dk-strong",
+    "dk-em",
+    "dk-list",
+    "dk-item",
+    "dk-code",
+    "dk-quote",
+    "dk-link",
+    "dk-table",
+    "dk-row",
+    "dk-cell",
+    "dk-grid",
+    "dk-region",
+    "dk-stack",
+    "dk-raw"
+  ];
+  window[RUNTIME_KEY].registerPlugin({
+    name: "core",
+    version: DECKNOW_VERSION,
+    kind: "core",
+    elements: coreElements,
+    selectable: coreSelectableElements,
+    meta: {
+      builtin: true
+    }
+  });
+  window[RUNTIME_KEY].registerPlugin({
+    name: "theme:terminal-green",
+    version: DECKNOW_VERSION,
+    kind: "theme",
+    themes: ["terminal-green"],
+    meta: {
+      builtin: true,
+      default: true
+    }
+  });
+  function plainElementClass() {
+    return class extends HTMLElement {
+    };
   }
-
-  attributeChangedCallback() {
-    this.syncRegion();
-  }
-
-  syncRegion() {
-    const span = clampInteger(this.getAttribute("span"), 1, 6, 1);
-    this.style.setProperty("--dk-region-span", String(span));
-  }
-}
-
-function clampInteger(value, min, max, fallback) {
-  if (value === null || value === undefined || value === "") return fallback;
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed)) return fallback;
-  return Math.max(min, Math.min(max, parsed));
-}
-
-[
-  ["dk-deck", DKDeck],
-  ["dk-slide", DKSlide],
-  ["dk-title", plainElementClass()],
-  ["dk-subtitle", plainElementClass()],
-  ["dk-heading", plainElementClass()],
-  ["dk-text", plainElementClass()],
-  ["dk-list", plainElementClass()],
-  ["dk-item", DKItem],
-  ["dk-code", DKCode],
-  ["dk-quote", plainElementClass()],
-  ["dk-link", DKLink],
-  ["dk-table", DKTable],
-  ["dk-grid", DKGrid],
-  ["dk-region", DKRegion],
-  ["dk-stack", plainElementClass()],
-  ["dk-raw", plainElementClass()],
-  ["dk-row", plainElementClass()],
-  ["dk-cell", plainElementClass()],
-  ["dk-tr", plainElementClass()],
-  ["dk-th", plainElementClass()],
-  ["dk-td", plainElementClass()],
-  ["dk-strong", plainElementClass()],
-  ["dk-em", plainElementClass()],
-].forEach(([name, klass]) => {
-  defineElement(name, klass);
-});
-
-function plainElementClass() {
-  return class extends HTMLElement {};
-}
-
-injectStyles();
+  injectStyles();
+})();

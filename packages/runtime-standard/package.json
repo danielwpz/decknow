@@ -8,6 +8,7 @@
     "./decknow.js": "./decknow.js"
   },
   "files": [
-    "decknow.js"
+    "decknow.js",
+    "src"
   ]
 }

@@ -1,5 +1,5 @@
 (() => {
-  const SELECTABLE_SELECTOR = [
+  const FALLBACK_SELECTABLE_SELECTORS = [
     "dk-slide",
     "dk-title",
     "dk-subtitle",
@@ -19,7 +19,7 @@
     "dk-region",
     "dk-stack",
     "dk-raw",
-  ].join(",");
+  ];
 
   const state = {
     active: false,
@@ -236,11 +236,21 @@
     const activeSlide = document.querySelector("dk-slide[data-active='true']");
     if (!activeSlide) return null;
     const elements = document.elementsFromPoint(x, y);
+    const selector = selectableSelector();
     for (const element of elements) {
-      const target = element.closest?.(SELECTABLE_SELECTOR);
+      const target = element.closest?.(selector);
       if (target && activeSlide.contains(target)) return target;
     }
     return null;
+  }
+
+  function selectableSelector() {
+    const runtimeSelectors = window.__DECKNOW__?.getSelectableSelectors?.();
+    const selectors =
+      Array.isArray(runtimeSelectors) && runtimeSelectors.length
+        ? runtimeSelectors
+        : FALLBACK_SELECTABLE_SELECTORS;
+    return selectors.join(",");
   }
 
   function describeTarget(element) {
