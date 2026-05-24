@@ -9,6 +9,10 @@ import { hideBin } from "yargs/helpers";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(__dirname, "../../..");
 const runtimePath = path.join(workspaceRoot, "packages/runtime-standard/decknow.js");
+const commentOverlayPath = path.join(workspaceRoot, "packages/cli/client/comment-overlay.js");
+const defaultCommentsDir = ".decknow-runs/comments";
+const defaultDevPort = 4317;
+const devPortFallbackLimit = 50;
 
 function resolveEntry(entry) {
   const resolved = path.resolve(process.cwd(), entry);
@@ -18,42 +22,218 @@ function resolveEntry(entry) {
   return resolved;
 }
 
-function createStaticServer(entryFile) {
+function createStaticServer(entryFile, options = {}) {
   const serveRoot = entryFile.startsWith(`${workspaceRoot}${path.sep}`)
     ? workspaceRoot
     : path.dirname(entryFile);
   const entryRoute = `/${path.relative(serveRoot, entryFile).split(path.sep).join("/")}`;
+  const comments = options.comments || null;
+  const commentState = comments ? { modeOpenedLogged: false } : null;
 
-  return http.createServer((req, res) => {
+  return http.createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://localhost");
     let pathname = decodeURIComponent(url.pathname);
 
-    if (pathname === "/") pathname = entryRoute;
-    if (pathname === "/__decknow__/runtime.js") {
-      return serveFile(runtimePath, "application/javascript", res);
-    }
+    try {
+      if (comments && pathname.startsWith("/__decknow__/comments/")) {
+        await handleCommentApi(req, res, {
+          entryFile,
+          sessionId: comments.sessionId,
+          storeRoot: comments.storeRoot,
+          state: commentState,
+        });
+        return;
+      }
 
-    const target = path.normalize(path.join(serveRoot, pathname));
-    if (!target.startsWith(serveRoot)) {
-      res.writeHead(403);
-      res.end("Forbidden");
-      return;
-    }
+      if (pathname === "/") pathname = entryRoute;
+      if (pathname === "/__decknow__/runtime.js") {
+        return serveFile(runtimePath, "application/javascript; charset=utf-8", res);
+      }
 
-    serveFile(target, mimeType(target), res);
+      if (comments && pathname === "/__decknow__/comments.js") {
+        return serveFile(commentOverlayPath, "application/javascript; charset=utf-8", res);
+      }
+
+      const target = path.normalize(path.join(serveRoot, pathname));
+      if (!isPathInside(target, serveRoot)) {
+        sendText(res, 403, "Forbidden");
+        return;
+      }
+
+      const contentType = mimeType(target);
+      const transform =
+        comments && contentType.startsWith("text/html") ? injectCommentOverlay : null;
+      serveFile(target, contentType, res, transform);
+    } catch (error) {
+      sendJson(res, 500, { ok: false, error: error?.message || String(error) });
+    }
   });
 }
 
-function serveFile(filePath, contentType, res) {
+function serveFile(filePath, contentType, res, transform = null) {
   fs.readFile(filePath, (error, data) => {
     if (error) {
-      res.writeHead(404);
-      res.end("Not found");
+      sendText(res, 404, "Not found");
       return;
     }
+    const body = transform ? transform(data.toString("utf8")) : data;
     res.writeHead(200, { "Content-Type": contentType });
-    res.end(data);
+    res.end(body);
   });
+}
+
+function isPathInside(target, root) {
+  return target === root || target.startsWith(`${root}${path.sep}`);
+}
+
+function injectCommentOverlay(html) {
+  if (html.includes("/__decknow__/comments.js")) return html;
+  const script = '\n    <script src="/__decknow__/comments.js"></script>\n';
+  if (/<\/body\s*>/i.test(html)) {
+    return html.replace(/<\/body\s*>/i, `${script}  </body>`);
+  }
+  return `${html}${script}`;
+}
+
+async function handleCommentApi(req, res, context) {
+  if (req.method !== "POST") {
+    sendJson(res, 405, { ok: false, error: "Method not allowed." });
+    return;
+  }
+
+  const url = new URL(req.url || "/", "http://localhost");
+  if (url.pathname === "/__decknow__/comments/mode-opened") {
+    await readJsonBody(req);
+    if (!context.state.modeOpenedLogged) {
+      context.state.modeOpenedLogged = true;
+      console.log("Comment mode opened. The user may add comments across multiple slides.");
+    }
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  if (url.pathname === "/__decknow__/comments/rounds") {
+    const payload = await readJsonBody(req);
+    const round = saveCommentRound(context.storeRoot, {
+      entry: context.entryFile,
+      sessionId: context.sessionId,
+      payload,
+    });
+    console.log(
+      `Comment round ${round.round} submitted with ${round.commentCount} ${round.commentCount === 1 ? "comment" : "comments"}.`
+    );
+    console.log("Run `decknow comments latest` to read this round.");
+    sendJson(res, 200, { ok: true, ...round });
+    return;
+  }
+
+  sendJson(res, 404, { ok: false, error: "Unknown comment endpoint." });
+}
+
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > 2_000_000) {
+        reject(new Error("Request body too large."));
+        req.destroy();
+      }
+    });
+    req.on("end", () => {
+      if (!body.trim()) {
+        resolve({});
+        return;
+      }
+      try {
+        resolve(JSON.parse(body));
+      } catch {
+        reject(new Error("Invalid JSON request body."));
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+function commentsStoreRoot() {
+  return path.resolve(process.cwd(), defaultCommentsDir);
+}
+
+function readCommentsIndex(storeRoot) {
+  const indexPath = path.join(storeRoot, "index.json");
+  if (!fs.existsSync(indexPath)) {
+    return { latestRound: 0, rounds: [] };
+  }
+  return JSON.parse(fs.readFileSync(indexPath, "utf8"));
+}
+
+function saveCommentRound(storeRoot, { entry, sessionId, payload }) {
+  const index = readCommentsIndex(storeRoot);
+  const roundNumber = Number(index.latestRound || 0) + 1;
+  const createdAt = new Date().toISOString();
+  const comments = Array.isArray(payload?.comments) ? payload.comments : [];
+  const file = `round-${roundNumber}.json`;
+  const round = {
+    round: roundNumber,
+    sessionId,
+    entry,
+    createdAt,
+    commentCount: comments.length,
+    deck: payload?.deck || null,
+    viewport: payload?.viewport || null,
+    comments,
+  };
+
+  writeJson(path.join(storeRoot, file), round);
+  writeJson(path.join(storeRoot, "index.json"), {
+    latestRound: roundNumber,
+    updatedAt: createdAt,
+    rounds: [
+      ...(Array.isArray(index.rounds) ? index.rounds : []),
+      {
+        round: roundNumber,
+        sessionId,
+        entry,
+        createdAt,
+        commentCount: comments.length,
+        file,
+      },
+    ],
+  });
+
+  return round;
+}
+
+function readCommentRound(storeRoot, roundNumber) {
+  const file = path.join(storeRoot, `round-${roundNumber}.json`);
+  if (!fs.existsSync(file)) {
+    throw new Error(`Comment round ${roundNumber} was not found.`);
+  }
+  return JSON.parse(fs.readFileSync(file, "utf8"));
+}
+
+function readLatestCommentRound(storeRoot) {
+  const index = readCommentsIndex(storeRoot);
+  if (!index.latestRound) {
+    throw new Error("No comment rounds found.");
+  }
+  return readCommentRound(storeRoot, index.latestRound);
+}
+
+function writeJson(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(`${filePath}.tmp`, `${JSON.stringify(value, null, 2)}\n`);
+  fs.renameSync(`${filePath}.tmp`, filePath);
+}
+
+function sendJson(res, status, payload) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(`${JSON.stringify(payload, null, 2)}\n`);
+}
+
+function sendText(res, status, text) {
+  res.writeHead(status, { "Content-Type": "text/plain; charset=utf-8" });
+  res.end(text);
 }
 
 function mimeType(filePath) {
@@ -77,12 +257,54 @@ function mimeType(filePath) {
 
 function listen(server, port) {
   return new Promise((resolve, reject) => {
-    server.on("error", reject);
+    const onError = (error) => {
+      reject(error);
+    };
+    server.once("error", onError);
     server.listen(port, "127.0.0.1", () => {
+      server.off("error", onError);
       const address = server.address();
       resolve(address.port);
     });
   });
+}
+
+async function listenWithPortFallback(createServer, preferredPort) {
+  if (preferredPort === 0) {
+    const server = createServer();
+    const port = await listen(server, 0);
+    return { server, port, requestedPort: 0 };
+  }
+
+  let lastError = null;
+  for (let offset = 0; offset <= devPortFallbackLimit; offset += 1) {
+    const candidatePort = preferredPort + offset;
+    const server = createServer();
+    try {
+      const port = await listen(server, candidatePort);
+      return { server, port, requestedPort: preferredPort };
+    } catch (error) {
+      closeServer(server);
+      lastError = error;
+      if (!isPortUnavailableError(error)) throw error;
+    }
+  }
+
+  throw new Error(
+    `No available port found from ${preferredPort} to ${preferredPort + devPortFallbackLimit}: ${lastError?.message || "unknown error"}`
+  );
+}
+
+function isPortUnavailableError(error) {
+  return ["EADDRINUSE", "EACCES"].includes(error?.code);
+}
+
+function closeServer(server) {
+  try {
+    server.close();
+  } catch {
+    // The server may not have started listening yet.
+  }
 }
 
 function validateHtml(entryFile) {
@@ -157,15 +379,35 @@ function entryUrl(port, entry) {
 
 async function runDev(argv) {
   const entry = resolveEntry(argv.entry);
-  const server = createStaticServer(entry);
-  const port = await listen(server, argv.port || 0);
+  const storeRoot = commentsStoreRoot();
+  const sessionId = createSessionId();
+  const requestedPort = Number(argv.port);
+  const { port } = await listenWithPortFallback(
+    () =>
+      createStaticServer(entry, {
+        comments: {
+          sessionId,
+          storeRoot,
+        },
+      }),
+    requestedPort
+  );
   const url = entryUrl(port, entry);
-  console.log(`Decknow dev server`);
-  console.log(`Entry: ${entry}`);
-  console.log(`URL:   ${url}`);
+  console.log("Decknow dev server is running.");
+  if (requestedPort !== 0 && port !== requestedPort) {
+    console.log(`Port ${requestedPort} was unavailable. Using ${port} instead.`);
+  }
+  console.log(`Open: ${url}`);
+  console.log(
+    "Comments are enabled. Click the floating comment button in the browser to annotate the deck."
+  );
+  console.log(`Comment rounds will be stored in: ${storeRoot}`);
   console.log(`Runtime alias: /__decknow__/runtime.js`);
-  console.log("Examples can also be opened directly as file:// documents.");
   console.log(`Press Ctrl+C to stop.`);
+}
+
+function createSessionId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 async function runValidate(argv) {
@@ -291,6 +533,40 @@ async function runInspect(argv) {
 
   console.log(JSON.stringify(argv.summary ? summarizeInspectResult(result) : result, null, 2));
   if (!result.ok) process.exitCode = 1;
+}
+
+async function runComments(argv) {
+  const storeRoot = commentsStoreRoot();
+  try {
+    if (argv.action === "list") {
+      const index = readCommentsIndex(storeRoot);
+      printJson({ ok: true, storage: storeRoot, ...index });
+      return;
+    }
+
+    if (argv.action === "latest") {
+      printJson({ ok: true, storage: storeRoot, ...readLatestCommentRound(storeRoot) });
+      return;
+    }
+
+    if (argv.action === "show") {
+      const roundNumber = Number(argv.round);
+      if (!Number.isInteger(roundNumber) || roundNumber < 1) {
+        throw new Error("`decknow comments show` requires a positive numeric round.");
+      }
+      printJson({ ok: true, storage: storeRoot, ...readCommentRound(storeRoot, roundNumber) });
+      return;
+    }
+
+    throw new Error(`Unknown comments action: ${argv.action}`);
+  } catch (error) {
+    process.exitCode = 1;
+    printJson({ ok: false, storage: storeRoot, error: error?.message || String(error) });
+  }
+}
+
+function printJson(value) {
+  console.log(JSON.stringify(value, null, 2));
 }
 
 function summarizeInspectResult(result) {
@@ -507,11 +783,12 @@ await yargs(hideBin(process.argv))
         .option("port", {
           alias: "p",
           type: "number",
-          default: 0,
-          describe: "Port, 0 picks a free port",
+          default: defaultDevPort,
+          describe:
+            "Starting port. If unavailable, dev tries the next port. Use 0 for any free port",
         })
         .example("decknow dev deck.html", "Serve a local preview for a deck")
-        .example("decknow dev deck.html --port 4317", "Serve on a fixed port"),
+        .example("decknow dev deck.html --port 4317", "Start from a specific port"),
     runDev
   )
   .command(
@@ -593,6 +870,25 @@ await yargs(hideBin(process.argv))
         .example("decknow inspect deck.html -s 4 -q dk-grid -m", "Inspect grid layout")
         .example("decknow inspect deck.html --all -q dk-grid -v 1440x900", "Check every grid"),
     runInspect
+  )
+  .command(
+    "comments <action> [round]",
+    "Read submitted development comment rounds as JSON.",
+    (y) =>
+      y
+        .positional("action", {
+          type: "string",
+          choices: ["list", "latest", "show"],
+          describe: "Comment action",
+        })
+        .positional("round", {
+          type: "number",
+          describe: "Numeric round id for `show`",
+        })
+        .example("decknow comments list", "Print submitted comment round summaries")
+        .example("decknow comments latest", "Print the latest submitted comment round")
+        .example("decknow comments show 3", "Print comment round 3"),
+    runComments
   )
   .demandCommand(1)
   .strict()

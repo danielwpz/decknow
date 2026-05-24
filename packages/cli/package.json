@@ -2,12 +2,13 @@
   "name": "@decknow/cli",
   "version": "0.0.1",
   "type": "module",
-  "description": "CLI for previewing, validating, and screenshotting Decknow decks.",
+  "description": "CLI for previewing, validating, inspecting, and commenting on Decknow decks.",
   "bin": {
     "decknow": "./bin/decknow.js"
   },
   "files": [
     "bin",
+    "client",
     "src"
   ],
   "dependencies": {

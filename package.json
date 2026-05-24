@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.15.0",
   "scripts": {
     "dev": "node packages/cli/bin/decknow.js dev examples/basic.html",
+    "comments": "node packages/cli/bin/decknow.js comments latest",
     "fmt": "biome format --write .",
     "inspect": "node packages/cli/bin/decknow.js inspect examples/project-overview.html --slide 4 --viewport 1440x900",
     "lint": "biome check .",

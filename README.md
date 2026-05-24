@@ -19,16 +19,22 @@ Preview the current example deck:
 pnpm dev
 ```
 
-The example HTML files also work when opened directly from the filesystem because
-they use a relative runtime script:
+`decknow dev` starts a local development server. In development it injects a
+comment overlay and accepts local comment submissions so an AI agent can read
+them later. The deck rendering itself is still HTML-backed.
+
+The dev server starts on `127.0.0.1:4317` by default. If that port is already in
+use, it tries the next ports in sequence and prints the actual URL.
+
+The example HTML files also work when opened directly from the filesystem in a
+presentation-like static mode because they use a relative runtime script:
 
 ```txt
 examples/project-overview.html
 examples/basic.html
 ```
 
-`decknow dev` is only a local static preview helper. It is not an API server and
-the deck does not depend on a backend to render.
+Direct file opening does not include the development comment overlay.
 
 Validate the current example deck:
 
@@ -41,6 +47,7 @@ Print CLI help:
 ```bash
 pnpm exec decknow --help
 pnpm exec decknow inspect --help
+pnpm exec decknow comments --help
 ```
 
 Capture the first slide:
@@ -70,12 +77,20 @@ Use `--summary` when the full computed-style payload is too noisy:
 pnpm exec decknow inspect examples/project-overview.html -s 4 -q "dk-grid" -v 1440x900 -m
 ```
 
+Read the latest submitted development comment round:
+
+```bash
+pnpm comments
+pnpm exec decknow comments list
+pnpm exec decknow comments show 1
+```
+
 ## Current Packages
 
 ```txt
 packages/runtime-standard   Browser runtime for the current HTML DSL
 packages/schema             First-pass schema and element manifest
-packages/cli                Local dev/validate/screenshot/inspect CLI
+packages/cli                Local dev/validate/screenshot/inspect/comments CLI
 examples/basic.html         First example deck
 ```
 
