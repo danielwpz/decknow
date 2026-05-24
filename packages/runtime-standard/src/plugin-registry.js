@@ -1,16 +1,33 @@
 const PLUGIN_NAME_PATTERN = /^[a-z0-9][a-z0-9-:.]*$/;
+const ELEMENT_PREFIX_PATTERN = /^[a-z0-9][a-z0-9-]*-$/;
+const RESERVED_META_KEYS = new Set(["builtin", "official", "trusted"]);
 
-export function createPluginRegistry(environment = {}) {
+export function createPluginRegistry(environment = {}, options = {}) {
   const env = resolveEnvironment(environment);
+  const officialPluginNames = new Set(options.officialPluginNames || []);
+  const officialElementPrefix = options.officialElementPrefix || "dk-";
   const plugins = new Map();
   const elementOwners = new Map();
   const selectableSelectors = new Set();
   const themeOwners = new Map();
 
   function registerPlugin(plugin) {
-    const record = normalizePlugin(plugin);
+    const record = normalizePlugin(plugin, { trusted: false });
     assertCanRegister(record);
+    assertPublicPluginPolicy(record);
+    return applyRegistration(record);
+  }
 
+  function registerBuiltInPlugin(plugin) {
+    const record = normalizePlugin(plugin, { trusted: true });
+    if (!officialPluginNames.has(record.name)) {
+      throw new Error(`Built-in Decknow plugin "${record.name}" is not in the official allowlist.`);
+    }
+    assertCanRegister(record);
+    return applyRegistration(record);
+  }
+
+  function applyRegistration(record) {
     for (const [name, klass] of Object.entries(record.elements)) {
       registerElement(name, klass, record.name);
     }
@@ -64,6 +81,38 @@ export function createPluginRegistry(environment = {}) {
       if (themeOwners.has(theme)) {
         throw new Error(
           `Decknow theme "${theme}" is already provided by plugin "${themeOwners.get(theme)}".`
+        );
+      }
+    }
+  }
+
+  function assertPublicPluginPolicy(record) {
+    const elementNames = Object.keys(record.elements);
+    if (!elementNames.length) return;
+
+    if (!record.elementPrefix) {
+      throw new Error(`Plugin "${record.name}" must declare elementPrefix for public elements.`);
+    }
+    if (!ELEMENT_PREFIX_PATTERN.test(record.elementPrefix)) {
+      throw new Error(
+        `Plugin "${record.name}" has invalid elementPrefix "${record.elementPrefix}". It must be a lowercase custom-element prefix ending with "-".`
+      );
+    }
+    if (record.elementPrefix === officialElementPrefix) {
+      throw new Error(
+        `Plugin "${record.name}" cannot use reserved Decknow element prefix "${officialElementPrefix}".`
+      );
+    }
+
+    for (const name of elementNames) {
+      if (name.startsWith(officialElementPrefix)) {
+        throw new Error(
+          `Plugin "${record.name}" cannot register official Decknow element "${name}".`
+        );
+      }
+      if (!name.startsWith(record.elementPrefix)) {
+        throw new Error(
+          `Plugin "${record.name}" element "${name}" must use declared prefix "${record.elementPrefix}".`
         );
       }
     }
@@ -123,6 +172,7 @@ export function createPluginRegistry(environment = {}) {
 
   return {
     registerPlugin,
+    registerBuiltInPlugin,
     getPlugin,
     getPlugins,
     getSelectableSelectors,
@@ -132,7 +182,7 @@ export function createPluginRegistry(environment = {}) {
   };
 }
 
-export function normalizePlugin(plugin) {
+export function normalizePlugin(plugin, options = {}) {
   if (!plugin || typeof plugin !== "object") {
     throw new Error("Decknow plugin must be an object.");
   }
@@ -150,12 +200,14 @@ export function normalizePlugin(plugin) {
     name: plugin.name,
     version: plugin.version || "0.0.0",
     kind: plugin.kind || "component",
+    trusted: Boolean(options.trusted),
+    elementPrefix: plugin.elementPrefix || null,
     elements,
     selectable: normalizeStringList(plugin.selectable, Object.keys(elements)),
     themes: normalizeStringList(plugin.themes, []),
     styles: normalizeStyles(plugin.styles),
     schema: plugin.schema || null,
-    meta: plugin.meta || {},
+    meta: sanitizeMeta(plugin.meta),
   };
 }
 
@@ -190,11 +242,18 @@ function normalizeStringList(value, fallback) {
   return [String(value)].filter(Boolean);
 }
 
+function sanitizeMeta(meta) {
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return {};
+  return Object.fromEntries(Object.entries(meta).filter(([key]) => !RESERVED_META_KEYS.has(key)));
+}
+
 function pluginSummary(record) {
   return {
     name: record.name,
     version: record.version,
     kind: record.kind,
+    trusted: record.trusted,
+    elementPrefix: record.elementPrefix,
     elements: Object.keys(record.elements),
     selectable: [...record.selectable],
     themes: [...record.themes],

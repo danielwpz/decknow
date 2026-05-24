@@ -151,6 +151,36 @@ const deck = defineDeck({
           </dk-region>
         </dk-grid>
       </dk-slide>
+
+      <dk-slide layout="grid">
+        <dk-heading level="2">内置图形模板</dk-heading>
+        <dk-grid columns="2" gap="lg">
+          <dk-region frame tone="accent" valign="center">
+            <dk-heading level="3">Flow</dk-heading>
+            <dk-text>
+              AI 只声明步骤，runtime 自动处理序号、连接线、间距和响应式排列。
+            </dk-text>
+            <dk-flow density="high">
+              <dk-flow-step>声明结构</dk-flow-step>
+              <dk-flow-step tone="accent">运行时排版</dk-flow-step>
+              <dk-flow-step emphasis>截图反馈</dk-flow-step>
+            </dk-flow>
+          </dk-region>
+
+          <dk-region frame tone="muted" valign="center">
+            <dk-heading level="3">Pyramid</dk-heading>
+            <dk-text>
+              层级数量可以自由增减，主题决定颜色、边框和字体。
+            </dk-text>
+            <dk-pyramid density="high" fit="fill">
+              <dk-pyramid-level tone="strong">AI Native</dk-pyramid-level>
+              <dk-pyramid-level tone="accent">Runtime</dk-pyramid-level>
+              <dk-pyramid-level>HTML DSL</dk-pyramid-level>
+              <dk-pyramid-level tone="muted">Static Web</dk-pyramid-level>
+            </dk-pyramid>
+          </dk-region>
+        </dk-grid>
+      </dk-slide>
     </dk-deck>
   </body>
 </html>

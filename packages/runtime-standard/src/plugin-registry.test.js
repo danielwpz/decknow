@@ -22,24 +22,27 @@ describe("plugin registry", () => {
       name: "test-plugin",
       version: "1.2.3",
       kind: "component",
+      elementPrefix: "test-",
       elements: {
-        "dk-test-card": TestCard,
+        "test-card": TestCard,
       },
-      selectable: ["dk-test-card"],
+      selectable: ["test-card"],
       themes: ["test-theme"],
-      styles: "dk-test-card { display: block; }",
+      styles: "test-card { display: block; }",
     });
 
     expect(summary).toMatchObject({
       name: "test-plugin",
       version: "1.2.3",
       kind: "component",
-      elements: ["dk-test-card"],
-      selectable: ["dk-test-card"],
+      trusted: false,
+      elementPrefix: "test-",
+      elements: ["test-card"],
+      selectable: ["test-card"],
       themes: ["test-theme"],
     });
-    expect(env.customElements.get("dk-test-card")).toBe(TestCard);
-    expect(registry.getSelectableSelectors()).toEqual(["dk-test-card"]);
+    expect(env.customElements.get("test-card")).toBe(TestCard);
+    expect(registry.getSelectableSelectors()).toEqual(["test-card"]);
     expect(registry.getThemeNames()).toEqual(["test-theme"]);
     expect(env.document.getElementById("decknow-plugin-test-plugin-default-styles")).not.toBeNull();
   });
@@ -52,8 +55,9 @@ describe("plugin registry", () => {
 
     registry.registerPlugin({
       name: "first",
+      elementPrefix: "first-",
       elements: {
-        "dk-first": FirstElement,
+        "first-card": FirstElement,
       },
     });
 
@@ -66,11 +70,106 @@ describe("plugin registry", () => {
     expect(() =>
       registry.registerPlugin({
         name: "second",
+        elementPrefix: "first-",
         elements: {
-          "dk-first": SecondElement,
+          "first-card": SecondElement,
         },
       })
     ).toThrow(/already registered by plugin "first"/);
+  });
+
+  it("allows only allowlisted built-in plugins to register official dk elements", () => {
+    const env = createTestEnvironment();
+    const registry = createPluginRegistry(env, {
+      officialPluginNames: ["core"],
+    });
+    class OfficialElement extends env.HTMLElement {}
+
+    expect(() =>
+      registry.registerPlugin({
+        name: "fake-official",
+        official: true,
+        elementPrefix: "dk-",
+        elements: {
+          "dk-fake": OfficialElement,
+        },
+      })
+    ).toThrow(/reserved Decknow element prefix/);
+
+    expect(() =>
+      registry.registerBuiltInPlugin({
+        name: "not-allowlisted",
+        elements: {
+          "dk-nope": OfficialElement,
+        },
+      })
+    ).toThrow(/not in the official allowlist/);
+
+    const summary = registry.registerBuiltInPlugin({
+      name: "core",
+      elements: {
+        "dk-official": OfficialElement,
+      },
+    });
+
+    expect(summary).toMatchObject({
+      name: "core",
+      trusted: true,
+      elements: ["dk-official"],
+    });
+    expect(env.customElements.get("dk-official")).toBe(OfficialElement);
+  });
+
+  it("requires public elements to match their declared elementPrefix", () => {
+    const env = createTestEnvironment();
+    const registry = createPluginRegistry(env);
+    class TestElement extends env.HTMLElement {}
+
+    expect(() =>
+      registry.registerPlugin({
+        name: "missing-prefix",
+        elements: {
+          "x-card": TestElement,
+        },
+      })
+    ).toThrow(/must declare elementPrefix/);
+
+    expect(() =>
+      registry.registerPlugin({
+        name: "wrong-prefix",
+        elementPrefix: "acme-",
+        elements: {
+          "other-card": TestElement,
+        },
+      })
+    ).toThrow(/must use declared prefix "acme-"/);
+  });
+
+  it("ignores plugin self-declared trust metadata", () => {
+    const env = createTestEnvironment();
+    const registry = createPluginRegistry(env);
+    class TestElement extends env.HTMLElement {}
+
+    const summary = registry.registerPlugin({
+      name: "self-declared-official",
+      official: true,
+      trusted: true,
+      elementPrefix: "self-",
+      elements: {
+        "self-card": TestElement,
+      },
+      meta: {
+        builtin: true,
+        official: true,
+        trusted: true,
+        label: "safe metadata",
+      },
+    });
+
+    expect(summary.trusted).toBe(false);
+    expect(summary.meta).toEqual({
+      label: "safe metadata",
+    });
   });
 
   it("rejects invalid elements before creating partial registration side effects", () => {
@@ -81,6 +180,7 @@ describe("plugin registry", () => {
     expect(() =>
       registry.registerPlugin({
         name: "bad-plugin",
+        elementPrefix: "dk-",
         elements: {
           "dk-valid": ValidElement,
           invalid: ValidElement,

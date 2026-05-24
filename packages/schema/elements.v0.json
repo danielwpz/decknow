@@ -45,6 +45,8 @@
         "dk-grid",
         "dk-region",
         "dk-stack",
+        "dk-flow",
+        "dk-pyramid",
         "dk-raw"
       ]
     },
@@ -69,7 +71,7 @@
         "surface": ["auto", "none", "solid", "glass"],
         "valign": ["top", "center", "bottom", "stretch"]
       },
-      "children": ["flow"]
+      "children": ["flow", "dk-flow", "dk-pyramid"]
     },
     "dk-stack": {
       "description": "A vertical or horizontal content group.",
@@ -80,7 +82,43 @@
         "valign": ["top", "center", "bottom", "stretch"],
         "responsive": ["auto", "none"]
       },
-      "children": ["flow"]
+      "children": ["flow", "dk-flow", "dk-pyramid"]
+    },
+    "dk-flow": {
+      "description": "Built-in diagram template for process flows. AI provides ordered semantic steps; runtime owns spacing, connectors, and responsive layout.",
+      "attributes": {
+        "direction": ["auto", "horizontal", "vertical"],
+        "density": ["low", "medium", "high"],
+        "align": ["left", "center"],
+        "arrows": ["auto", "none"],
+        "responsive": ["auto", "none"]
+      },
+      "children": ["dk-flow-step"]
+    },
+    "dk-flow-step": {
+      "description": "One semantic step inside dk-flow.",
+      "attributes": {
+        "tone": ["default", "muted", "accent", "strong"],
+        "emphasis": "boolean"
+      }
+    },
+    "dk-pyramid": {
+      "description": "Built-in diagram template for layered hierarchy. AI provides ordered levels; runtime owns sizing and responsive layout.",
+      "attributes": {
+        "density": ["low", "medium", "high"],
+        "fit": ["auto", "fill"],
+        "label-placement": ["auto", "inside", "side", "callout"],
+        "responsive": ["auto", "none"],
+        "tip-ratio": "number"
+      },
+      "children": ["dk-pyramid-level"]
+    },
+    "dk-pyramid-level": {
+      "description": "One semantic layer inside dk-pyramid.",
+      "attributes": {
+        "tone": ["default", "muted", "accent", "strong"],
+        "emphasis": "boolean"
+      }
     },
     "dk-raw": {
       "description": "Explicit escape hatch for raw HTML/CSS/JS when the core DSL is insufficient. AI should use this sparingly and include a reason.",
@@ -150,10 +188,29 @@
       "attributes": {
         "header": "boolean"
       },
-      "children": ["dk-cell"]
+      "children": ["dk-cell", "dk-th", "dk-td"]
+    },
+    "dk-tr": {
+      "description": "Table row alias for HTML-familiar table DSL.",
+      "attributes": {
+        "header": "boolean"
+      },
+      "children": ["dk-cell", "dk-th", "dk-td"]
     },
     "dk-cell": {
       "description": "Table cell.",
+      "attributes": {
+        "align": ["left", "center", "right"]
+      }
+    },
+    "dk-th": {
+      "description": "Table header cell alias.",
+      "attributes": {
+        "align": ["left", "center", "right"]
+      }
+    },
+    "dk-td": {
+      "description": "Table data cell alias.",
       "attributes": {
         "align": ["left", "center", "right"]
       }

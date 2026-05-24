@@ -22,7 +22,7 @@ function resolveEntry(entry) {
   return resolved;
 }
 
-function createStaticServer(entryFile, options = {}) {
+export function createStaticServer(entryFile, options = {}) {
   const serveRoot = entryFile.startsWith(`${workspaceRoot}${path.sep}`)
     ? workspaceRoot
     : path.dirname(entryFile);
@@ -86,7 +86,7 @@ function isPathInside(target, root) {
   return target === root || target.startsWith(`${root}${path.sep}`);
 }
 
-function injectCommentOverlay(html) {
+export function injectCommentOverlay(html) {
   if (html.includes("/__decknow__/comments.js")) return html;
   const script = '\n    <script src="/__decknow__/comments.js"></script>\n';
   if (/<\/body\s*>/i.test(html)) {
@@ -159,7 +159,7 @@ function commentsStoreRoot() {
   return path.resolve(process.cwd(), defaultCommentsDir);
 }
 
-function readCommentsIndex(storeRoot) {
+export function readCommentsIndex(storeRoot) {
   const indexPath = path.join(storeRoot, "index.json");
   if (!fs.existsSync(indexPath)) {
     return { latestRound: 0, rounds: [] };
@@ -167,7 +167,7 @@ function readCommentsIndex(storeRoot) {
   return JSON.parse(fs.readFileSync(indexPath, "utf8"));
 }
 
-function saveCommentRound(storeRoot, { entry, sessionId, payload }) {
+export function saveCommentRound(storeRoot, { entry, sessionId, payload }) {
   const index = readCommentsIndex(storeRoot);
   const roundNumber = Number(index.latestRound || 0) + 1;
   const createdAt = new Date().toISOString();
@@ -204,7 +204,7 @@ function saveCommentRound(storeRoot, { entry, sessionId, payload }) {
   return round;
 }
 
-function readCommentRound(storeRoot, roundNumber) {
+export function readCommentRound(storeRoot, roundNumber) {
   const file = path.join(storeRoot, `round-${roundNumber}.json`);
   if (!fs.existsSync(file)) {
     throw new Error(`Comment round ${roundNumber} was not found.`);
@@ -212,7 +212,7 @@ function readCommentRound(storeRoot, roundNumber) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
-function readLatestCommentRound(storeRoot) {
+export function readLatestCommentRound(storeRoot) {
   const index = readCommentsIndex(storeRoot);
   if (!index.latestRound) {
     throw new Error("No comment rounds found.");
@@ -307,7 +307,7 @@ function closeServer(server) {
   }
 }
 
-function validateHtml(entryFile) {
+export function validateHtml(entryFile) {
   const html = fs.readFileSync(entryFile, "utf8");
   const warnings = [];
   const errors = [];
@@ -370,7 +370,7 @@ function ensureRuntimeScript(entryFile) {
   );
 }
 
-function entryUrl(port, entry) {
+export function entryUrl(port, entry) {
   const route = entry.startsWith(`${workspaceRoot}${path.sep}`)
     ? `/${path.relative(workspaceRoot, entry).split(path.sep).join("/")}`
     : `/${path.basename(entry)}`;
@@ -763,7 +763,7 @@ async function inspectActiveSlide(page, selector) {
   }, selector);
 }
 
-function parseViewport(value) {
+export function parseViewport(value) {
   if (!value) return { width: 1920, height: 1080 };
   const match = String(value).match(/^(\d+)x(\d+)$/);
   if (!match)
@@ -771,130 +771,132 @@ function parseViewport(value) {
   return { width: Number(match[1]), height: Number(match[2]) };
 }
 
-await yargs(hideBin(process.argv))
-  .scriptName("decknow")
-  .wrap(120)
-  .command(
-    "dev <entry>",
-    "Preview a Decknow HTML deck in a local browser server.",
-    (y) =>
-      y
-        .positional("entry", { type: "string", describe: "HTML deck entry file" })
-        .option("port", {
-          alias: "p",
-          type: "number",
-          default: defaultDevPort,
-          describe:
-            "Starting port. If unavailable, dev tries the next port. Use 0 for any free port",
-        })
-        .example("decknow dev deck.html", "Serve a local preview for a deck")
-        .example("decknow dev deck.html --port 4317", "Start from a specific port"),
-    runDev
-  )
-  .command(
-    "validate <entry>",
-    "Run the first-pass schema and escape-hatch checks.",
-    (y) =>
-      y
-        .positional("entry", { type: "string", describe: "HTML deck entry file" })
-        .option("json", { type: "boolean", default: false, describe: "Print JSON output" })
-        .example("decknow validate deck.html", "Validate a deck")
-        .example("decknow validate deck.html --json", "Print machine-readable output"),
-    runValidate
-  )
-  .command(
-    "screenshot <entry>",
-    "Render a deck with Playwright and capture slide screenshots.",
-    (y) =>
-      y
-        .positional("entry", { type: "string", describe: "HTML deck entry file" })
-        .option("slide", {
-          alias: "s",
-          type: "number",
-          default: 1,
-          describe: "1-based slide number",
-        })
-        .option("all", { type: "boolean", default: false, describe: "Capture every slide" })
-        .option("step", { type: "number", describe: "Step/click state to set before capture" })
-        .option("viewport", {
-          alias: "v",
-          type: "string",
-          default: "1920x1080",
-          describe: "Viewport as WIDTHxHEIGHT",
-        })
-        .option("out", {
-          alias: "o",
-          type: "string",
-          default: ".decknow-runs/latest",
-          describe: "Output directory",
-        })
-        .example("decknow screenshot deck.html --slide 1", "Capture one slide")
-        .example(
-          "decknow screenshot deck.html --all --viewport 1440x900",
-          "Capture every slide at a specific viewport"
-        ),
-    runScreenshot
-  )
-  .command(
-    "inspect <entry>",
-    "Render a deck and print slide layout metrics as JSON.",
-    (y) =>
-      y
-        .positional("entry", { type: "string", describe: "HTML deck entry file" })
-        .option("slide", {
-          alias: "s",
-          type: "number",
-          default: 1,
-          describe: "1-based slide number",
-        })
-        .option("all", { type: "boolean", default: false, describe: "Inspect every slide" })
-        .option("step", { type: "number", describe: "Step/click state to set before inspect" })
-        .option("selector", {
-          alias: "q",
-          type: "string",
-          default: ":scope > *",
-          describe: "CSS selector scoped to the active slide",
-        })
-        .option("summary", {
-          alias: "m",
-          type: "boolean",
-          default: false,
-          describe: "Print compact inspect output",
-        })
-        .option("viewport", {
-          alias: "v",
-          type: "string",
-          default: "1920x1080",
-          describe: "Viewport as WIDTHxHEIGHT",
-        })
-        .example("decknow inspect deck.html -s 4 -q dk-grid -m", "Inspect grid layout")
-        .example("decknow inspect deck.html --all -q dk-grid -v 1440x900", "Check every grid"),
-    runInspect
-  )
-  .command(
-    "comments <action> [round]",
-    "Read submitted development comment rounds as JSON.",
-    (y) =>
-      y
-        .positional("action", {
-          type: "string",
-          choices: ["list", "latest", "show"],
-          describe: "Comment action",
-        })
-        .positional("round", {
-          type: "number",
-          describe: "Numeric round id for `show`",
-        })
-        .example("decknow comments list", "Print submitted comment round summaries")
-        .example("decknow comments latest", "Print the latest submitted comment round")
-        .example("decknow comments show 3", "Print comment round 3"),
-    runComments
-  )
-  .demandCommand(1)
-  .strict()
-  .help()
-  .fail((message, error) => {
-    console.error(error?.message || message);
-    process.exit(1);
-  })
-  .parseAsync();
+export async function runCli(argv = process.argv) {
+  await yargs(hideBin(argv))
+    .scriptName("decknow")
+    .wrap(120)
+    .command(
+      "dev <entry>",
+      "Preview a Decknow HTML deck in a local browser server.",
+      (y) =>
+        y
+          .positional("entry", { type: "string", describe: "HTML deck entry file" })
+          .option("port", {
+            alias: "p",
+            type: "number",
+            default: defaultDevPort,
+            describe:
+              "Starting port. If unavailable, dev tries the next port. Use 0 for any free port",
+          })
+          .example("decknow dev deck.html", "Serve a local preview for a deck")
+          .example("decknow dev deck.html --port 4317", "Start from a specific port"),
+      runDev
+    )
+    .command(
+      "validate <entry>",
+      "Run the first-pass schema and escape-hatch checks.",
+      (y) =>
+        y
+          .positional("entry", { type: "string", describe: "HTML deck entry file" })
+          .option("json", { type: "boolean", default: false, describe: "Print JSON output" })
+          .example("decknow validate deck.html", "Validate a deck")
+          .example("decknow validate deck.html --json", "Print machine-readable output"),
+      runValidate
+    )
+    .command(
+      "screenshot <entry>",
+      "Render a deck with Playwright and capture slide screenshots.",
+      (y) =>
+        y
+          .positional("entry", { type: "string", describe: "HTML deck entry file" })
+          .option("slide", {
+            alias: "s",
+            type: "number",
+            default: 1,
+            describe: "1-based slide number",
+          })
+          .option("all", { type: "boolean", default: false, describe: "Capture every slide" })
+          .option("step", { type: "number", describe: "Step/click state to set before capture" })
+          .option("viewport", {
+            alias: "v",
+            type: "string",
+            default: "1920x1080",
+            describe: "Viewport as WIDTHxHEIGHT",
+          })
+          .option("out", {
+            alias: "o",
+            type: "string",
+            default: ".decknow-runs/latest",
+            describe: "Output directory",
+          })
+          .example("decknow screenshot deck.html --slide 1", "Capture one slide")
+          .example(
+            "decknow screenshot deck.html --all --viewport 1440x900",
+            "Capture every slide at a specific viewport"
+          ),
+      runScreenshot
+    )
+    .command(
+      "inspect <entry>",
+      "Render a deck and print slide layout metrics as JSON.",
+      (y) =>
+        y
+          .positional("entry", { type: "string", describe: "HTML deck entry file" })
+          .option("slide", {
+            alias: "s",
+            type: "number",
+            default: 1,
+            describe: "1-based slide number",
+          })
+          .option("all", { type: "boolean", default: false, describe: "Inspect every slide" })
+          .option("step", { type: "number", describe: "Step/click state to set before inspect" })
+          .option("selector", {
+            alias: "q",
+            type: "string",
+            default: ":scope > *",
+            describe: "CSS selector scoped to the active slide",
+          })
+          .option("summary", {
+            alias: "m",
+            type: "boolean",
+            default: false,
+            describe: "Print compact inspect output",
+          })
+          .option("viewport", {
+            alias: "v",
+            type: "string",
+            default: "1920x1080",
+            describe: "Viewport as WIDTHxHEIGHT",
+          })
+          .example("decknow inspect deck.html -s 4 -q dk-grid -m", "Inspect grid layout")
+          .example("decknow inspect deck.html --all -q dk-grid -v 1440x900", "Check every grid"),
+      runInspect
+    )
+    .command(
+      "comments <action> [round]",
+      "Read submitted development comment rounds as JSON.",
+      (y) =>
+        y
+          .positional("action", {
+            type: "string",
+            choices: ["list", "latest", "show"],
+            describe: "Comment action",
+          })
+          .positional("round", {
+            type: "number",
+            describe: "Numeric round id for `show`",
+          })
+          .example("decknow comments list", "Print submitted comment round summaries")
+          .example("decknow comments latest", "Print the latest submitted comment round")
+          .example("decknow comments show 3", "Print comment round 3"),
+      runComments
+    )
+    .demandCommand(1)
+    .strict()
+    .help()
+    .fail((message, error) => {
+      console.error(error?.message || message);
+      process.exit(1);
+    })
+    .parseAsync();
+}

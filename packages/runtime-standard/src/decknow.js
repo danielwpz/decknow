@@ -1,4 +1,5 @@
 import { createPluginRegistry } from "./plugin-registry.js";
+import { createDiagramBasicPlugin } from "./plugins/diagram-basic/index.js";
 
 const DECKNOW_VERSION = "0.0.1";
 const RUNTIME_KEY = "__DECKNOW__";
@@ -13,7 +14,12 @@ const runtimeReady = new Promise((resolve) => {
   runtimeState.resolveReady = resolve;
 });
 
-const pluginRegistry = createPluginRegistry();
+const pluginRegistry = createPluginRegistry(
+  {},
+  {
+    officialPluginNames: ["core", "theme:terminal-green", "diagram-basic"],
+  }
+);
 
 function isDebugEnabled() {
   return (
@@ -1710,27 +1716,22 @@ const coreSelectableElements = [
   "dk-raw",
 ];
 
-window[RUNTIME_KEY].registerPlugin({
+pluginRegistry.registerBuiltInPlugin({
   name: "core",
   version: DECKNOW_VERSION,
   kind: "core",
   elements: coreElements,
   selectable: coreSelectableElements,
-  meta: {
-    builtin: true,
-  },
 });
 
-window[RUNTIME_KEY].registerPlugin({
+pluginRegistry.registerBuiltInPlugin({
   name: "theme:terminal-green",
   version: DECKNOW_VERSION,
   kind: "theme",
   themes: ["terminal-green"],
-  meta: {
-    builtin: true,
-    default: true,
-  },
 });
+
+pluginRegistry.registerBuiltInPlugin(createDiagramBasicPlugin(DECKNOW_VERSION));
 
 function plainElementClass() {
   return class extends HTMLElement {};

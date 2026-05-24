@@ -1,15 +1,31 @@
 (() => {
   // packages/runtime-standard/src/plugin-registry.js
   var PLUGIN_NAME_PATTERN = /^[a-z0-9][a-z0-9-:.]*$/;
-  function createPluginRegistry(environment = {}) {
+  var ELEMENT_PREFIX_PATTERN = /^[a-z0-9][a-z0-9-]*-$/;
+  var RESERVED_META_KEYS = /* @__PURE__ */ new Set(["builtin", "official", "trusted"]);
+  function createPluginRegistry(environment = {}, options = {}) {
     const env = resolveEnvironment(environment);
+    const officialPluginNames = new Set(options.officialPluginNames || []);
+    const officialElementPrefix = options.officialElementPrefix || "dk-";
     const plugins = /* @__PURE__ */ new Map();
     const elementOwners = /* @__PURE__ */ new Map();
     const selectableSelectors = /* @__PURE__ */ new Set();
     const themeOwners = /* @__PURE__ */ new Map();
     function registerPlugin(plugin) {
-      const record = normalizePlugin(plugin);
+      const record = normalizePlugin(plugin, { trusted: false });
       assertCanRegister(record);
+      assertPublicPluginPolicy(record);
+      return applyRegistration(record);
+    }
+    function registerBuiltInPlugin(plugin) {
+      const record = normalizePlugin(plugin, { trusted: true });
+      if (!officialPluginNames.has(record.name)) {
+        throw new Error(`Built-in Decknow plugin "${record.name}" is not in the official allowlist.`);
+      }
+      assertCanRegister(record);
+      return applyRegistration(record);
+    }
+    function applyRegistration(record) {
       for (const [name, klass] of Object.entries(record.elements)) {
         registerElement(name, klass, record.name);
       }
@@ -61,6 +77,35 @@
         }
       }
     }
+    function assertPublicPluginPolicy(record) {
+      const elementNames = Object.keys(record.elements);
+      if (!elementNames.length) return;
+      if (!record.elementPrefix) {
+        throw new Error(`Plugin "${record.name}" must declare elementPrefix for public elements.`);
+      }
+      if (!ELEMENT_PREFIX_PATTERN.test(record.elementPrefix)) {
+        throw new Error(
+          `Plugin "${record.name}" has invalid elementPrefix "${record.elementPrefix}". It must be a lowercase custom-element prefix ending with "-".`
+        );
+      }
+      if (record.elementPrefix === officialElementPrefix) {
+        throw new Error(
+          `Plugin "${record.name}" cannot use reserved Decknow element prefix "${officialElementPrefix}".`
+        );
+      }
+      for (const name of elementNames) {
+        if (name.startsWith(officialElementPrefix)) {
+          throw new Error(
+            `Plugin "${record.name}" cannot register official Decknow element "${name}".`
+          );
+        }
+        if (!name.startsWith(record.elementPrefix)) {
+          throw new Error(
+            `Plugin "${record.name}" element "${name}" must use declared prefix "${record.elementPrefix}".`
+          );
+        }
+      }
+    }
     function registerElement(name, klass, pluginName) {
       env.customElements?.define(name, klass);
       elementOwners.set(name, pluginName);
@@ -107,6 +152,7 @@
     }
     return {
       registerPlugin,
+      registerBuiltInPlugin,
       getPlugin,
       getPlugins,
       getSelectableSelectors,
@@ -115,7 +161,7 @@
       getManifest
     };
   }
-  function normalizePlugin(plugin) {
+  function normalizePlugin(plugin, options = {}) {
     if (!plugin || typeof plugin !== "object") {
       throw new Error("Decknow plugin must be an object.");
     }
@@ -132,12 +178,14 @@
       name: plugin.name,
       version: plugin.version || "0.0.0",
       kind: plugin.kind || "component",
+      trusted: Boolean(options.trusted),
+      elementPrefix: plugin.elementPrefix || null,
       elements,
       selectable: normalizeStringList(plugin.selectable, Object.keys(elements)),
       themes: normalizeStringList(plugin.themes, []),
       styles: normalizeStyles(plugin.styles),
       schema: plugin.schema || null,
-      meta: plugin.meta || {}
+      meta: sanitizeMeta(plugin.meta)
     };
   }
   function normalizeElements(elements = {}) {
@@ -166,11 +214,17 @@
     if (typeof value === "object") return Object.keys(value);
     return [String(value)].filter(Boolean);
   }
+  function sanitizeMeta(meta) {
+    if (!meta || typeof meta !== "object" || Array.isArray(meta)) return {};
+    return Object.fromEntries(Object.entries(meta).filter(([key]) => !RESERVED_META_KEYS.has(key)));
+  }
   function pluginSummary(record) {
     return {
       name: record.name,
       version: record.version,
       kind: record.kind,
+      trusted: record.trusted,
+      elementPrefix: record.elementPrefix,
       elements: Object.keys(record.elements),
       selectable: [...record.selectable],
       themes: [...record.themes],
@@ -192,6 +246,661 @@
     };
   }
 
+  // packages/runtime-standard/src/plugins/diagram-basic/flow.js
+  var DKFlow = class extends HTMLElement {
+    static get observedAttributes() {
+      return ["direction", "responsive"];
+    }
+    connectedCallback() {
+      if (!this.hasAttribute("role")) this.setAttribute("role", "list");
+      this.ensureStepLabels();
+      this.syncOrientation();
+      if (!this._dkFlowResizeObserver) {
+        this._dkFlowResizeObserver = new ResizeObserver(() => this.syncOrientation());
+        this._dkFlowResizeObserver.observe(this);
+        if (this.parentElement) this._dkFlowResizeObserver.observe(this.parentElement);
+      }
+      if (!this._dkFlowMutationObserver) {
+        this._dkFlowMutationObserver = new MutationObserver(() => {
+          this.ensureStepLabels();
+          this.syncOrientation();
+        });
+        this._dkFlowMutationObserver.observe(this, { childList: true, subtree: true });
+      }
+    }
+    disconnectedCallback() {
+      this._dkFlowResizeObserver?.disconnect();
+      this._dkFlowResizeObserver = null;
+      this._dkFlowMutationObserver?.disconnect();
+      this._dkFlowMutationObserver = null;
+    }
+    attributeChangedCallback() {
+      this.syncOrientation();
+    }
+    ensureStepLabels() {
+      for (const step of this.querySelectorAll(":scope > dk-flow-step")) {
+        ensureFlowStepLabel(step);
+      }
+    }
+    syncOrientation() {
+      const forcedDirection = this.getAttribute("direction");
+      if (forcedDirection === "horizontal" || forcedDirection === "vertical") {
+        this.dataset.dkOrientation = forcedDirection;
+        return;
+      }
+      if (this.getAttribute("responsive") === "none") {
+        this.dataset.dkOrientation = "horizontal";
+        return;
+      }
+      const steps = Array.from(this.querySelectorAll(":scope > dk-flow-step"));
+      if (steps.length <= 1) {
+        this.dataset.dkOrientation = "horizontal";
+        return;
+      }
+      const hostRect = this.getBoundingClientRect();
+      const parentRect = this.parentElement?.getBoundingClientRect() || hostRect;
+      const gap = parseFloat(getComputedStyle(this).columnGap || "0") || 0;
+      const requiredWidth = steps.reduce((total, step) => total + measureFlowStepWidth(step), 0) + gap * Math.max(0, steps.length - 1);
+      const hasVerticalRoom = parentRect.height > parentRect.width * 1.08;
+      const lacksHorizontalRoom = hostRect.width < requiredWidth;
+      this.dataset.dkOrientation = hasVerticalRoom || lacksHorizontalRoom ? "vertical" : "horizontal";
+    }
+  };
+  var DKFlowStep = class extends HTMLElement {
+    connectedCallback() {
+      if (!this.hasAttribute("role")) this.setAttribute("role", "listitem");
+      ensureFlowStepLabel(this);
+    }
+  };
+  var flowSchema = {
+    "dk-flow": {
+      description: "Semantic process flow. Runtime owns node spacing and connectors."
+    },
+    "dk-flow-step": {
+      description: "One step inside a dk-flow."
+    }
+  };
+  function ensureFlowStepLabel(step) {
+    let label = step.querySelector(":scope > .dk-flow-step-label");
+    if (!label) {
+      label = document.createElement("span");
+      label.className = "dk-flow-step-label";
+      step.appendChild(label);
+    }
+    for (const child of Array.from(step.childNodes)) {
+      if (child === label) continue;
+      label.appendChild(child);
+    }
+  }
+  function measureFlowStepWidth(step) {
+    const style = getComputedStyle(step);
+    const label = step.querySelector(":scope > .dk-flow-step-label");
+    const labelWidth = label?.scrollWidth || step.scrollWidth || 0;
+    const padding = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0) + (parseFloat(style.columnGap) || 0);
+    const markerWidth = parseFloat(getComputedStyle(step, "::before").width || "0") || 36;
+    return Math.ceil(labelWidth + padding + markerWidth + 4);
+  }
+  var flowStyles = `
+  dk-flow {
+    --dk-flow-gap-local: var(--dk-grid-gap-lg);
+    --dk-flow-arrow-head: clamp(12px, 1.1cqw, 18px);
+    position: relative;
+    z-index: 1;
+    display: flex;
+    width: 100%;
+    max-width: min(100%, 1120px);
+    align-items: stretch;
+    gap: var(--dk-flow-gap-local);
+    counter-reset: dk-flow-step;
+  }
+
+  dk-flow[data-dk-orientation="vertical"] {
+    max-width: min(100%, 760px);
+    flex-direction: column;
+  }
+
+  dk-flow[align="center"] {
+    margin-inline: auto;
+  }
+
+  dk-flow[density="high"] {
+    --dk-flow-gap-local: var(--dk-grid-gap);
+  }
+
+  dk-flow[density="low"] {
+    --dk-flow-gap-local: calc(var(--dk-grid-gap-lg) * 1.25);
+  }
+
+  dk-flow-step {
+    counter-increment: dk-flow-step;
+    position: relative;
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    align-items: center;
+    gap: clamp(10px, 1.2cqw, 18px);
+    padding: clamp(14px, 1.8cqw, 26px);
+    border: 1px solid var(--dk-flow-step-border, var(--dk-panel-border));
+    border-radius: var(--dk-radius);
+    background: var(--dk-flow-step-surface, var(--dk-panel-surface));
+    color: var(--dk-slide-ink);
+    box-shadow: var(--dk-panel-shadow);
+    font-size: var(--dk-text-size);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  dk-flow[data-dk-orientation="horizontal"] dk-flow-step {
+    min-width: max-content;
+    flex-basis: max-content;
+  }
+
+  .dk-flow-step-label {
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  dk-flow-step::before {
+    content: counter(dk-flow-step);
+    display: grid;
+    width: clamp(28px, 2.8cqw, 42px);
+    height: clamp(28px, 2.8cqw, 42px);
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--dk-flow-step-accent, var(--dk-accent));
+    color: var(--dk-panel-ink-strong);
+    font-size: 0.76em;
+    font-weight: 850;
+  }
+
+  dk-flow-step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 4px);
+    width: calc(var(--dk-flow-gap-local) - 4px);
+    height: clamp(16px, 1.6cqw, 24px);
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--dk-accent), rgba(57, 211, 83, 0.12));
+    clip-path: polygon(
+      0 38%,
+      calc(100% - var(--dk-flow-arrow-head)) 38%,
+      calc(100% - var(--dk-flow-arrow-head)) 10%,
+      100% 50%,
+      calc(100% - var(--dk-flow-arrow-head)) 90%,
+      calc(100% - var(--dk-flow-arrow-head)) 62%,
+      0 62%
+    );
+    opacity: 0.96;
+  }
+
+  dk-flow[arrows="none"] dk-flow-step::after {
+    display: none;
+  }
+
+  dk-flow[data-dk-orientation="vertical"] dk-flow-step {
+    flex-basis: auto;
+  }
+
+  dk-flow[data-dk-orientation="vertical"] dk-flow-step:not(:last-child)::after {
+    top: calc(100% + 4px);
+    right: auto;
+    left: 50%;
+    width: clamp(16px, 1.6cqw, 24px);
+    height: calc(var(--dk-flow-gap-local) - 4px);
+    transform: translateX(-50%);
+    background: linear-gradient(180deg, var(--dk-accent), rgba(57, 211, 83, 0.12));
+    clip-path: polygon(
+      38% 0,
+      62% 0,
+      62% calc(100% - var(--dk-flow-arrow-head)),
+      90% calc(100% - var(--dk-flow-arrow-head)),
+      50% 100%,
+      10% calc(100% - var(--dk-flow-arrow-head)),
+      38% calc(100% - var(--dk-flow-arrow-head))
+    );
+  }
+
+  dk-flow[data-dk-orientation="vertical"] .dk-flow-step-label {
+    white-space: normal;
+  }
+
+  dk-flow-step[tone="muted"] {
+    --dk-flow-step-accent: var(--dk-muted);
+    --dk-flow-step-border: var(--dk-border);
+    --dk-flow-step-surface: var(--dk-panel-surface-muted);
+  }
+
+  dk-flow-step[tone="accent"] {
+    --dk-flow-step-surface: var(--dk-panel-surface-accent);
+    --dk-flow-step-border: rgba(57, 211, 83, 0.34);
+  }
+
+  dk-flow-step[tone="strong"],
+  dk-flow-step[emphasis] {
+    --dk-flow-step-accent: var(--dk-accent-2);
+    --dk-flow-step-border: rgba(57, 211, 83, 0.52);
+    --dk-flow-step-surface: rgba(57, 211, 83, 0.16);
+  }
+
+  @container dk-slide (max-width: 760px) {
+    dk-flow:not([responsive="none"]) dk-flow-step:not(:last-child)::after {
+      top: calc(100% + 4px);
+      right: auto;
+      left: 50%;
+      width: clamp(16px, 1.6cqw, 24px);
+      height: calc(var(--dk-flow-gap-local) - 4px);
+      transform: translateX(-50%);
+      background: linear-gradient(180deg, var(--dk-accent), rgba(57, 211, 83, 0.12));
+      clip-path: polygon(
+        38% 0,
+        62% 0,
+        62% calc(100% - var(--dk-flow-arrow-head)),
+        90% calc(100% - var(--dk-flow-arrow-head)),
+        50% 100%,
+        10% calc(100% - var(--dk-flow-arrow-head)),
+        38% calc(100% - var(--dk-flow-arrow-head))
+      );
+    }
+
+    dk-flow[data-dk-orientation="horizontal"] dk-flow-step:not(:last-child)::after {
+      top: 50%;
+      left: calc(100% + 4px);
+      width: calc(var(--dk-flow-gap-local) - 4px);
+      height: clamp(16px, 1.6cqw, 24px);
+      transform: translateY(-50%);
+      background: linear-gradient(90deg, var(--dk-accent), rgba(57, 211, 83, 0.12));
+      clip-path: polygon(
+        0 38%,
+        calc(100% - var(--dk-flow-arrow-head)) 38%,
+        calc(100% - var(--dk-flow-arrow-head)) 10%,
+        100% 50%,
+        calc(100% - var(--dk-flow-arrow-head)) 90%,
+        calc(100% - var(--dk-flow-arrow-head)) 62%,
+        0 62%
+      );
+    }
+
+    dk-flow-step {
+      font-size: var(--dk-text-size-tablet);
+    }
+
+    dk-flow[data-dk-orientation="vertical"] .dk-flow-step-label {
+      white-space: normal;
+    }
+  }
+
+  @container dk-slide (max-width: 560px) {
+    dk-flow {
+      --dk-flow-gap-local: var(--dk-grid-gap);
+    }
+
+    dk-flow-step {
+      padding: clamp(10px, 2.8cqw, 15px);
+      font-size: var(--dk-text-size-phone);
+    }
+
+    dk-flow-step::before {
+      width: clamp(22px, 7cqw, 30px);
+      height: clamp(22px, 7cqw, 30px);
+    }
+  }
+`;
+
+  // packages/runtime-standard/src/plugins/diagram-basic/pyramid.js
+  var DKPyramid = class extends HTMLElement {
+    static get observedAttributes() {
+      return ["label-placement", "tip-ratio"];
+    }
+    connectedCallback() {
+      this.syncLevels();
+      requestAnimationFrame(() => this.syncLevels());
+      if (this._dkPyramidObserver) return;
+      this._dkPyramidObserver = new MutationObserver(() => this.syncLevels());
+      this._dkPyramidObserver.observe(this, { childList: true, subtree: true, characterData: true });
+      this._dkPyramidResizeObserver = new ResizeObserver(() => this.syncLevels());
+      this._dkPyramidResizeObserver.observe(this);
+    }
+    disconnectedCallback() {
+      this._dkPyramidObserver?.disconnect();
+      this._dkPyramidObserver = null;
+      this._dkPyramidResizeObserver?.disconnect();
+      this._dkPyramidResizeObserver = null;
+    }
+    attributeChangedCallback() {
+      this.syncLevels();
+    }
+    syncLevels() {
+      const levels = Array.from(this.querySelectorAll(":scope > dk-pyramid-level"));
+      const count = Math.max(1, levels.length);
+      const tipRatio = clampRatio(Number(this.getAttribute("tip-ratio") || 0), 0, 0.72);
+      const placement = normalizePlacement(this.getAttribute("label-placement"));
+      const width = this.getBoundingClientRect().width;
+      const decisions = levels.map((level, index) => {
+        ensurePyramidLevelParts(level);
+        return decideLabelPlacement(level, index, count, width, tipRatio, placement, 1);
+      });
+      const hasSideLabels = decisions.some((decision) => decision.placement !== "inside");
+      const shapeRatio = hasSideLabels ? 0.68 : 1;
+      this.dataset.dkHasSideLabels = hasSideLabels ? "true" : "false";
+      for (const [index, level] of levels.entries()) {
+        const topRatio = pyramidBoundaryRatio(index, count, tipRatio);
+        const bottomRatio = pyramidBoundaryRatio(index + 1, count, tipRatio);
+        const decision = decideLabelPlacement(
+          level,
+          index,
+          count,
+          width,
+          tipRatio,
+          placement,
+          shapeRatio
+        );
+        level.style.setProperty("--dk-pyramid-left-top", toEdgePercent(topRatio, "left"));
+        level.style.setProperty("--dk-pyramid-right-top", toEdgePercent(topRatio, "right"));
+        level.style.setProperty("--dk-pyramid-left-bottom", toEdgePercent(bottomRatio, "left"));
+        level.style.setProperty("--dk-pyramid-right-bottom", toEdgePercent(bottomRatio, "right"));
+        level.style.setProperty("--dk-pyramid-level-index", String(index + 1));
+        level.style.setProperty("--dk-pyramid-level-count", String(count));
+        level.style.setProperty(
+          "--dk-pyramid-label-left",
+          toLevelEdgePercent(bottomRatio, "left", shapeRatio)
+        );
+        level.style.setProperty(
+          "--dk-pyramid-label-right",
+          toLevelEdgePercent(bottomRatio, "right", shapeRatio)
+        );
+        level.style.setProperty(
+          "--dk-pyramid-label-scale",
+          String(Math.round(decision.scale * 1e3) / 1e3)
+        );
+        level.dataset.dkLabelPlacement = decision.placement;
+      }
+    }
+  };
+  var DKPyramidLevel = class extends HTMLElement {
+    connectedCallback() {
+      ensurePyramidLevelParts(this);
+    }
+  };
+  var pyramidSchema = {
+    "dk-pyramid": {
+      description: "Semantic layered pyramid. Runtime owns level sizing."
+    },
+    "dk-pyramid-level": {
+      description: "One level inside a dk-pyramid."
+    }
+  };
+  function clampRatio(value, min, max) {
+    if (!Number.isFinite(value)) return min;
+    return Math.min(max, Math.max(min, value));
+  }
+  function toEdgePercent(ratio, side) {
+    const halfSpan = ratio * 50;
+    const value = side === "left" ? 50 - halfSpan : 50 + halfSpan;
+    return `${Math.round(value * 1e3) / 1e3}%`;
+  }
+  function toLevelEdgePercent(ratio, side, shapeRatio) {
+    const halfSpan = ratio * 50;
+    const shapePercent = side === "left" ? 50 - halfSpan : 50 + halfSpan;
+    const value = shapePercent * shapeRatio;
+    return `${Math.round(value * 1e3) / 1e3}%`;
+  }
+  function pyramidBoundaryRatio(boundaryIndex, count, tipRatio) {
+    if (boundaryIndex <= 0) return tipRatio;
+    if (boundaryIndex >= count) return 1;
+    const progress = boundaryIndex / count;
+    return tipRatio + progress * (1 - tipRatio);
+  }
+  function normalizePlacement(value) {
+    return value === "inside" || value === "side" || value === "callout" ? value : "auto";
+  }
+  function ensurePyramidLevelParts(level) {
+    let shape = level.querySelector(":scope > .dk-pyramid-level-shape");
+    let label = level.querySelector(":scope > .dk-pyramid-level-label");
+    if (!shape) {
+      shape = document.createElement("span");
+      shape.className = "dk-pyramid-level-shape";
+      shape.setAttribute("aria-hidden", "true");
+      level.prepend(shape);
+    }
+    if (!label) {
+      label = document.createElement("span");
+      label.className = "dk-pyramid-level-label";
+      level.appendChild(label);
+    }
+    for (const child of Array.from(level.childNodes)) {
+      if (child === shape || child === label) continue;
+      label.appendChild(child);
+    }
+  }
+  function decideLabelPlacement(level, index, count, width, tipRatio, placement, shapeRatio) {
+    if (placement === "side" || placement === "callout") {
+      return { placement, scale: 1 };
+    }
+    const bottomRatio = pyramidBoundaryRatio(index + 1, count, tipRatio);
+    const labelWidth = width * shapeRatio * bottomRatio - 16;
+    const textWidth = measureTextWidth(level.textContent, getLevelFont(level));
+    const scale = labelWidth > 0 ? clampRatio(labelWidth / Math.max(1, textWidth), 0.64, 1) : 1;
+    const tooLongForInside = textWidth * 0.64 > labelWidth * 1.95;
+    return {
+      placement: placement === "auto" && tooLongForInside ? "side" : "inside",
+      scale
+    };
+  }
+  function getLevelFont(level) {
+    const style = getComputedStyle(level);
+    return style.font || `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  }
+  function measureTextWidth(text, font) {
+    const value = String(text || "").trim();
+    if (!value) return 0;
+    if (!document.body) return value.length * 12;
+    const probe = document.createElement("span");
+    probe.textContent = value;
+    probe.style.position = "fixed";
+    probe.style.left = "-10000px";
+    probe.style.top = "-10000px";
+    probe.style.visibility = "hidden";
+    probe.style.whiteSpace = "nowrap";
+    probe.style.font = font;
+    document.body.appendChild(probe);
+    const width = probe.getBoundingClientRect().width;
+    probe.remove();
+    return width;
+  }
+  var pyramidStyles = `
+  dk-pyramid {
+    --dk-pyramid-shape-width: 100%;
+    --dk-pyramid-side-gap: clamp(12px, 2cqw, 24px);
+    position: relative;
+    z-index: 1;
+    display: flex;
+    width: 100%;
+    max-width: min(100%, 980px);
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    margin-inline: auto;
+    filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.28));
+  }
+
+  dk-pyramid[data-dk-has-side-labels="true"] {
+    --dk-pyramid-shape-width: 68%;
+    align-items: flex-start;
+  }
+
+  dk-pyramid[density="high"] {
+    gap: 1px;
+  }
+
+  dk-pyramid[density="low"] {
+    gap: clamp(4px, 0.7cqw, 8px);
+  }
+
+  dk-pyramid[fit="fill"] {
+    flex: 1 1 auto;
+    min-height: min(92%, clamp(280px, 38cqh, 470px));
+  }
+
+  dk-pyramid-level {
+    display: block;
+    position: relative;
+    width: 100%;
+    min-height: clamp(58px, 9cqh, 118px);
+    box-sizing: border-box;
+    border: 0;
+    color: var(--dk-slide-ink);
+    font-size: var(--dk-text-size);
+    font-weight: 760;
+    line-height: 1.18;
+    overflow: visible;
+  }
+
+  dk-pyramid[fit="fill"] dk-pyramid-level {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+
+  .dk-pyramid-level-shape {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: var(--dk-pyramid-shape-width);
+    clip-path: polygon(
+      var(--dk-pyramid-left-top, 40%) 0,
+      var(--dk-pyramid-right-top, 60%) 0,
+      var(--dk-pyramid-right-bottom, 100%) 100%,
+      var(--dk-pyramid-left-bottom, 0) 100%
+    );
+    background: var(--dk-pyramid-level-surface, var(--dk-panel-surface));
+    box-shadow: inset 0 0 0 1px var(--dk-pyramid-level-border, var(--dk-panel-border));
+  }
+
+  .dk-pyramid-level-label {
+    position: absolute;
+    z-index: 1;
+    inset-block: 0;
+    left: var(--dk-pyramid-label-left, 0);
+    right: calc(100% - var(--dk-pyramid-label-right, 100%));
+    display: flex;
+    width: auto;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding-inline: clamp(4px, 0.8cqw, 10px);
+    color: var(--dk-slide-ink);
+    font-size: calc(1em * var(--dk-pyramid-label-scale, 1));
+    text-align: center;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+
+  dk-pyramid-level[data-dk-label-placement="side"]::after,
+  dk-pyramid-level[data-dk-label-placement="callout"]::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: var(--dk-pyramid-shape-width);
+    width: var(--dk-pyramid-side-gap);
+    height: 1px;
+    background: linear-gradient(90deg, var(--dk-accent), transparent);
+  }
+
+  dk-pyramid-level[data-dk-label-placement="side"] .dk-pyramid-level-label,
+  dk-pyramid-level[data-dk-label-placement="callout"] .dk-pyramid-level-label {
+    left: calc(var(--dk-pyramid-shape-width) + var(--dk-pyramid-side-gap));
+    right: auto;
+    width: calc(100% - var(--dk-pyramid-shape-width) - var(--dk-pyramid-side-gap));
+    justify-content: flex-start;
+    padding-inline: 0;
+    text-align: left;
+    text-wrap: pretty;
+  }
+
+  dk-pyramid-level[data-dk-label-placement="callout"] .dk-pyramid-level-label {
+    inset-block: 10%;
+    padding: 0.35em 0.6em;
+    border: 1px solid var(--dk-pyramid-level-border, var(--dk-panel-border));
+    border-radius: calc(var(--dk-radius) * 0.6);
+    background: var(--dk-panel-surface-muted);
+  }
+
+  dk-pyramid-level[tone="muted"] {
+    --dk-pyramid-level-border: var(--dk-border);
+    --dk-pyramid-level-surface: var(--dk-panel-surface-muted);
+  }
+
+  dk-pyramid-level[tone="accent"] {
+    --dk-pyramid-level-border: rgba(57, 211, 83, 0.34);
+    --dk-pyramid-level-surface: var(--dk-panel-surface-accent);
+  }
+
+  dk-pyramid-level[tone="strong"],
+  dk-pyramid-level[emphasis] {
+    --dk-pyramid-level-border: rgba(57, 211, 83, 0.52);
+    --dk-pyramid-level-surface: rgba(57, 211, 83, 0.18);
+  }
+
+  @container dk-slide (max-width: 760px) {
+    dk-pyramid-level {
+      font-size: var(--dk-text-size-tablet);
+    }
+  }
+
+  @container dk-slide (max-width: 560px) {
+    dk-pyramid {
+      gap: clamp(6px, 1.6cqw, 10px);
+    }
+
+    dk-pyramid[fit="fill"] {
+      min-height: min(90%, clamp(210px, 42cqh, 330px));
+    }
+
+    dk-pyramid-level {
+      min-height: clamp(36px, 9cqh, 58px);
+      font-size: var(--dk-text-size-phone);
+    }
+  }
+`;
+
+  // packages/runtime-standard/src/plugins/diagram-basic/index.js
+  function createDiagramBasicPlugin(version) {
+    return {
+      name: "diagram-basic",
+      version,
+      kind: "component",
+      elements: {
+        "dk-flow": DKFlow,
+        "dk-flow-step": DKFlowStep,
+        "dk-pyramid": DKPyramid,
+        "dk-pyramid-level": DKPyramidLevel
+      },
+      selectable: ["dk-flow", "dk-flow-step", "dk-pyramid", "dk-pyramid-level"],
+      styles: [
+        {
+          id: "flow",
+          css: flowStyles
+        },
+        {
+          id: "pyramid",
+          css: pyramidStyles
+        }
+      ],
+      schema: {
+        elements: {
+          ...flowSchema,
+          ...pyramidSchema
+        }
+      },
+      meta: {
+        templates: ["flow", "pyramid"]
+      }
+    };
+  }
+
   // packages/runtime-standard/src/decknow.js
   var DECKNOW_VERSION = "0.0.1";
   var RUNTIME_KEY = "__DECKNOW__";
@@ -203,7 +912,12 @@
   var runtimeReady = new Promise((resolve) => {
     runtimeState.resolveReady = resolve;
   });
-  var pluginRegistry = createPluginRegistry();
+  var pluginRegistry = createPluginRegistry(
+    {},
+    {
+      officialPluginNames: ["core", "theme:terminal-green", "diagram-basic"]
+    }
+  );
   function isDebugEnabled() {
     return new URLSearchParams(window.location.search).has("debug") || window.location.hash.includes("debug=1") || window.localStorage?.getItem("decknow:debug") === "1" || document.querySelector("dk-deck[debug]") !== null;
   }
@@ -1787,26 +2501,20 @@
     "dk-stack",
     "dk-raw"
   ];
-  window[RUNTIME_KEY].registerPlugin({
+  pluginRegistry.registerBuiltInPlugin({
     name: "core",
     version: DECKNOW_VERSION,
     kind: "core",
     elements: coreElements,
-    selectable: coreSelectableElements,
-    meta: {
-      builtin: true
-    }
+    selectable: coreSelectableElements
   });
-  window[RUNTIME_KEY].registerPlugin({
+  pluginRegistry.registerBuiltInPlugin({
     name: "theme:terminal-green",
     version: DECKNOW_VERSION,
     kind: "theme",
-    themes: ["terminal-green"],
-    meta: {
-      builtin: true,
-      default: true
-    }
+    themes: ["terminal-green"]
   });
+  pluginRegistry.registerBuiltInPlugin(createDiagramBasicPlugin(DECKNOW_VERSION));
   function plainElementClass() {
     return class extends HTMLElement {
     };
