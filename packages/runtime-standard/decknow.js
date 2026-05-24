@@ -726,7 +726,7 @@ function injectStyles() {
       position: fixed;
       top: 50%;
       right: clamp(14px, 2vw, 28px);
-      transform: translateY(-50%);
+      transform: translateY(-50%) translateX(8px);
       z-index: 50;
       display: flex;
       flex-direction: column;
@@ -737,7 +737,23 @@ function injectStyles() {
       border-radius: 999px;
       background: rgba(1, 4, 9, 0.38);
       backdrop-filter: blur(10px);
+      opacity: 0.14;
+      filter: saturate(0.7);
       pointer-events: none;
+      transition:
+        opacity 260ms ease,
+        transform 260ms ease,
+        filter 260ms ease,
+        background 260ms ease,
+        border-color 260ms ease;
+    }
+
+    .dk-slide-dots[data-visible="true"] {
+      transform: translateY(-50%) translateX(0);
+      opacity: 1;
+      filter: saturate(1);
+      border-color: rgba(139, 148, 158, 0.28);
+      background: rgba(1, 4, 9, 0.56);
     }
 
     .dk-slide-dot {
@@ -746,6 +762,7 @@ function injectStyles() {
       border-radius: 999px;
       background: rgba(139, 148, 158, 0.42);
       box-shadow: 0 0 0 1px rgba(240, 246, 252, 0.08);
+      opacity: 0.72;
       transition:
         height 180ms ease,
         background 180ms ease,
@@ -757,6 +774,7 @@ function injectStyles() {
       height: clamp(18px, 2.6vh, 30px);
       background: linear-gradient(180deg, var(--dk-accent), var(--dk-accent-2));
       box-shadow: 0 0 18px rgba(57, 211, 83, 0.34);
+      opacity: 1;
     }
 
     .dk-slide-dot__text {
@@ -896,6 +914,16 @@ class DKDeck extends HTMLElement {
     if (!existing) this.appendChild(dots);
   }
 
+  showSlideDots() {
+    const dots = this.querySelector(":scope > .dk-slide-dots");
+    if (!dots) return;
+    dots.dataset.visible = "true";
+    clearTimeout(this._slideDotsTimer);
+    this._slideDotsTimer = setTimeout(() => {
+      dots.dataset.visible = "false";
+    }, 1200);
+  }
+
   setupKeyboard() {
     if (this._keyboardReady) return;
     this._keyboardReady = true;
@@ -1033,6 +1061,7 @@ class DKDeck extends HTMLElement {
     });
 
     this.updateSlideDots();
+    if (!options.silent) this.showSlideDots();
     if (!options.silent && canUseHistoryState()) {
       try {
         history.replaceState(null, "", `#slide-${target + 1}`);
