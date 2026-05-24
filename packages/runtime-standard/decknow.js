@@ -722,21 +722,50 @@ function injectStyles() {
       flex: 1;
     }
 
-    .dk-progress {
+    .dk-slide-dots {
       position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 4px;
-      background: rgba(255, 255, 255, 0.1);
+      top: 50%;
+      right: clamp(14px, 2vw, 28px);
+      transform: translateY(-50%);
       z-index: 50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(8px, 1.1vh, 14px);
+      padding: 10px 8px;
+      border: 1px solid rgba(139, 148, 158, 0.18);
+      border-radius: 999px;
+      background: rgba(1, 4, 9, 0.38);
+      backdrop-filter: blur(10px);
+      pointer-events: none;
     }
 
-    .dk-progress__bar {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, var(--dk-accent), var(--dk-accent-2));
-      transition: width 180ms ease;
+    .dk-slide-dot {
+      width: clamp(6px, 0.72vw, 9px);
+      height: clamp(6px, 0.72vw, 9px);
+      border-radius: 999px;
+      background: rgba(139, 148, 158, 0.42);
+      box-shadow: 0 0 0 1px rgba(240, 246, 252, 0.08);
+      transition:
+        height 180ms ease,
+        background 180ms ease,
+        box-shadow 180ms ease,
+        opacity 180ms ease;
+    }
+
+    .dk-slide-dot[aria-current="true"] {
+      height: clamp(18px, 2.6vh, 30px);
+      background: linear-gradient(180deg, var(--dk-accent), var(--dk-accent-2));
+      box-shadow: 0 0 18px rgba(57, 211, 83, 0.34);
+    }
+
+    .dk-slide-dot__text {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
     }
 
     @media (max-height: 620px) {
@@ -750,6 +779,11 @@ function injectStyles() {
 
       dk-code pre {
         max-height: 38cqh;
+      }
+
+      .dk-slide-dots {
+        gap: 6px;
+        padding: 8px 6px;
       }
     }
 
@@ -821,7 +855,7 @@ class DKDeck extends HTMLElement {
     this.currentStep = 0;
     this.slides = Array.from(this.querySelectorAll(":scope > dk-slide"));
     if (!this.hasAttribute("tabindex")) this.setAttribute("tabindex", "0");
-    this.ensureProgress();
+    this.ensureSlideDots();
     this.ensureDebugPanel();
     this.setupKeyboard();
     this.goToSlide(this.readInitialSlide(), { silent: true });
@@ -840,13 +874,26 @@ class DKDeck extends HTMLElement {
     return Math.max(0, Number(hash[1]) - 1);
   }
 
-  ensureProgress() {
-    if (this.querySelector(":scope > .dk-progress")) return;
-    const progress = document.createElement("div");
-    progress.className = "dk-progress";
-    progress.setAttribute("aria-hidden", "true");
-    progress.innerHTML = '<div class="dk-progress__bar"></div>';
-    this.appendChild(progress);
+  ensureSlideDots() {
+    this.refreshSlides();
+    const existing = this.querySelector(":scope > .dk-slide-dots");
+    const dots = existing || document.createElement("nav");
+    dots.className = "dk-slide-dots";
+    dots.setAttribute("aria-label", "Slide progress");
+    dots.innerHTML = "";
+
+    this.slides.forEach((_, index) => {
+      const dot = document.createElement("span");
+      dot.className = "dk-slide-dot";
+      dot.setAttribute("aria-label", `Slide ${index + 1} of ${this.slides.length}`);
+      const text = document.createElement("span");
+      text.className = "dk-slide-dot__text";
+      text.textContent = `Slide ${index + 1} of ${this.slides.length}`;
+      dot.appendChild(text);
+      dots.appendChild(dot);
+    });
+
+    if (!existing) this.appendChild(dots);
   }
 
   setupKeyboard() {
@@ -985,7 +1032,7 @@ class DKDeck extends HTMLElement {
       slide.setAttribute("aria-hidden", active ? "false" : "true");
     });
 
-    this.updateProgress();
+    this.updateSlideDots();
     if (!options.silent && canUseHistoryState()) {
       try {
         history.replaceState(null, "", `#slide-${target + 1}`);
@@ -1009,12 +1056,18 @@ class DKDeck extends HTMLElement {
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   }
 
-  updateProgress() {
-    const bar = this.querySelector(":scope > .dk-progress .dk-progress__bar");
-    if (!bar) return;
-    const total = Math.max(1, this.slides.length);
-    const progress = ((this.currentSlide + 1) / total) * 100;
-    bar.style.width = `${progress}%`;
+  updateSlideDots() {
+    const dots = Array.from(this.querySelectorAll(":scope > .dk-slide-dots .dk-slide-dot"));
+    if (dots.length !== this.slides.length) {
+      this.ensureSlideDots();
+      return this.updateSlideDots();
+    }
+
+    dots.forEach((dot, index) => {
+      const active = index === this.currentSlide;
+      dot.setAttribute("aria-current", active ? "true" : "false");
+      dot.dataset.active = active ? "true" : "false";
+    });
   }
 
   screenshotState() {
