@@ -182,22 +182,21 @@ async function runValidate(argv) {
   if (!result.ok) process.exitCode = 1;
 }
 
-async function runScreenshot(argv) {
-  const entry = resolveEntry(argv.entry);
-  ensureRuntimeScript(entry);
-
+async function loadChromium() {
   let chromium;
   try {
     ({ chromium } = await import("playwright"));
   } catch {
     throw new Error(
-      "Playwright is required for screenshots. Run `pnpm install` in the project root."
+      "Playwright is required for screenshot and inspect commands. Run `pnpm install` in the project root."
     );
   }
+  return chromium;
+}
 
-  const viewport = parseViewport(argv.viewport);
-  const outputDir = path.resolve(process.cwd(), argv.out || ".decknow-runs/latest");
-  fs.mkdirSync(outputDir, { recursive: true });
+async function withRenderedDeck(entry, viewport, callback) {
+  ensureRuntimeScript(entry);
+  const chromium = await loadChromium();
 
   const server = createStaticServer(entry);
   const port = await listen(server, 0);
@@ -208,7 +207,20 @@ async function runScreenshot(argv) {
     const page = await browser.newPage({ viewport });
     await page.goto(url, { waitUntil: "networkidle" });
     await page.evaluate(() => window.__DECKNOW__?.ready);
+    return await callback({ page, url });
+  } finally {
+    await browser.close();
+    server.close();
+  }
+}
 
+async function runScreenshot(argv) {
+  const entry = resolveEntry(argv.entry);
+  const viewport = parseViewport(argv.viewport);
+  const outputDir = path.resolve(process.cwd(), argv.out || ".decknow-runs/latest");
+  fs.mkdirSync(outputDir, { recursive: true });
+
+  const result = await withRenderedDeck(entry, viewport, async ({ page, url }) => {
     const slideCount = await page.evaluate(() => window.__DECKNOW__?.getSlideCount?.() ?? 0);
     const slideIndexes = argv.all
       ? Array.from({ length: slideCount }, (_, index) => index)
@@ -229,7 +241,7 @@ async function runScreenshot(argv) {
       files.push(filePath);
     }
 
-    const result = {
+    return {
       ok: true,
       entry,
       url,
@@ -237,11 +249,242 @@ async function runScreenshot(argv) {
       slideCount,
       files,
     };
-    console.log(JSON.stringify(result, null, 2));
-  } finally {
-    await browser.close();
-    server.close();
-  }
+  });
+
+  console.log(JSON.stringify(result, null, 2));
+}
+
+async function runInspect(argv) {
+  const entry = resolveEntry(argv.entry);
+  const viewport = parseViewport(argv.viewport);
+  const selector = argv.selector || ":scope > *";
+
+  const result = await withRenderedDeck(entry, viewport, async ({ page, url }) => {
+    const slideCount = await page.evaluate(() => window.__DECKNOW__?.getSlideCount?.() ?? 0);
+    const slideIndexes = argv.all
+      ? Array.from({ length: slideCount }, (_, index) => index)
+      : [Math.max(0, Math.min(slideCount - 1, Number(argv.slide || 1) - 1))];
+
+    const slides = [];
+    for (const index of slideIndexes) {
+      await page.evaluate((slideIndex) => window.__DECKNOW__.goToSlide(slideIndex), index);
+      if (argv.step !== undefined) {
+        await page.evaluate((step) => window.__DECKNOW__.setStep(step), Number(argv.step));
+      }
+      await page.evaluate(() => document.fonts?.ready);
+      await page.waitForTimeout(120);
+      slides.push(await inspectActiveSlide(page, selector));
+    }
+
+    const diagnostics = slides.flatMap((slide) => slide.diagnostics);
+    return {
+      ok: !diagnostics.some((diagnostic) => diagnostic.severity === "error"),
+      entry,
+      url,
+      viewport,
+      selector,
+      slideCount,
+      slides,
+      diagnostics,
+    };
+  });
+
+  console.log(JSON.stringify(argv.summary ? summarizeInspectResult(result) : result, null, 2));
+  if (!result.ok) process.exitCode = 1;
+}
+
+function summarizeInspectResult(result) {
+  return {
+    ok: result.ok,
+    entry: result.entry,
+    viewport: result.viewport,
+    selector: result.selector,
+    slideCount: result.slideCount,
+    slides: result.slides.map((slide) => ({
+      slideNumber: slide.state?.slideNumber,
+      layout: slide.slide?.attributes?.layout,
+      rect: slide.slide?.rect,
+      elements: slide.elements.map((element) => ({
+        index: element.index,
+        tag: element.tag,
+        text: element.text,
+        rect: element.rect,
+        margins: element.slideMargins,
+        overflow: Object.values(element.overflow).some(Boolean),
+        display: element.computed.display,
+        maxWidth: element.computed.maxWidth,
+      })),
+      diagnostics: slide.diagnostics,
+    })),
+    diagnostics: result.diagnostics,
+  };
+}
+
+async function inspectActiveSlide(page, selector) {
+  return page.evaluate((inspectSelector) => {
+    const activeSlide = document.querySelector("dk-slide[data-active='true']");
+    const state = window.__DECKNOW__?.screenshotState?.() || null;
+    const diagnostics = [];
+
+    function rectOf(element) {
+      const rect = element.getBoundingClientRect();
+      return {
+        x: round(rect.x),
+        y: round(rect.y),
+        left: round(rect.left),
+        right: round(rect.right),
+        top: round(rect.top),
+        bottom: round(rect.bottom),
+        width: round(rect.width),
+        height: round(rect.height),
+      };
+    }
+
+    function round(value) {
+      return Math.round(value * 1000) / 1000;
+    }
+
+    function compactText(element) {
+      return element.textContent?.replace(/\s+/g, " ").trim().slice(0, 160) || "";
+    }
+
+    function pickedStyles(element) {
+      const styles = getComputedStyle(element);
+      return {
+        display: styles.display,
+        position: styles.position,
+        width: styles.width,
+        maxWidth: styles.maxWidth,
+        height: styles.height,
+        overflow: styles.overflow,
+        alignItems: styles.alignItems,
+        justifyContent: styles.justifyContent,
+        gridTemplateColumns: styles.gridTemplateColumns,
+        gridTemplateRows: styles.gridTemplateRows,
+        flexDirection: styles.flexDirection,
+        whiteSpace: styles.whiteSpace,
+        textAlign: styles.textAlign,
+        fontSize: styles.fontSize,
+        lineHeight: styles.lineHeight,
+      };
+    }
+
+    function attributesOf(element) {
+      return Object.fromEntries(
+        Array.from(element.attributes, (attribute) => [attribute.name, attribute.value])
+      );
+    }
+
+    function elementInfo(element, index, slideRect) {
+      const rect = rectOf(element);
+      const tag = element.tagName.toLowerCase();
+      const leftMargin = rect.left - slideRect.left;
+      const rightMargin = slideRect.right - rect.right;
+      const overflow = {
+        left: rect.left < slideRect.left - 0.5,
+        right: rect.right > slideRect.right + 0.5,
+        top: rect.top < slideRect.top - 0.5,
+        bottom: rect.bottom > slideRect.bottom + 0.5,
+      };
+
+      const info = {
+        index,
+        tag,
+        text: compactText(element),
+        attributes: attributesOf(element),
+        rect,
+        slideMargins: {
+          left: round(leftMargin),
+          right: round(rightMargin),
+          horizontalImbalance: round(rightMargin - leftMargin),
+        },
+        overflow,
+        computed: pickedStyles(element),
+      };
+
+      if (Object.values(overflow).some(Boolean)) {
+        diagnostics.push({
+          type: "overflow",
+          severity: "error",
+          slide: state?.slideNumber,
+          tag,
+          index,
+          text: info.text,
+          message: `${tag} overflows the slide bounds.`,
+          overflow,
+        });
+      }
+
+      if (rect.width === 0 || rect.height === 0) {
+        diagnostics.push({
+          type: "empty-layout-box",
+          severity: "warn",
+          slide: state?.slideNumber,
+          tag,
+          index,
+          text: info.text,
+          message: `${tag} has a zero-size layout box.`,
+        });
+      }
+
+      if (["dk-grid", "dk-table"].includes(tag) && Math.abs(rightMargin - leftMargin) > 8) {
+        diagnostics.push({
+          type: "horizontal-imbalance",
+          severity: "warn",
+          slide: state?.slideNumber,
+          tag,
+          index,
+          text: info.text,
+          message: `${tag} has ${round(leftMargin)}px left margin and ${round(rightMargin)}px right margin inside the slide.`,
+          leftMargin: round(leftMargin),
+          rightMargin: round(rightMargin),
+        });
+      }
+
+      return info;
+    }
+
+    if (!activeSlide) {
+      return {
+        state,
+        slide: null,
+        elements: [],
+        diagnostics: [
+          {
+            type: "missing-active-slide",
+            severity: "error",
+            message: "No active slide was found.",
+          },
+        ],
+      };
+    }
+
+    const slideRect = rectOf(activeSlide);
+    let selectedElements = [];
+    try {
+      selectedElements = Array.from(activeSlide.querySelectorAll(inspectSelector));
+    } catch (error) {
+      diagnostics.push({
+        type: "invalid-selector",
+        severity: "error",
+        slide: state?.slideNumber,
+        selector: inspectSelector,
+        message: error?.message || String(error),
+      });
+    }
+
+    return {
+      state,
+      slide: {
+        tag: activeSlide.tagName.toLowerCase(),
+        attributes: attributesOf(activeSlide),
+        rect: slideRect,
+        computed: pickedStyles(activeSlide),
+      },
+      elements: selectedElements.map((element, index) => elementInfo(element, index, slideRect)),
+      diagnostics,
+    };
+  }, selector);
 }
 
 function parseViewport(value) {
@@ -254,16 +497,21 @@ function parseViewport(value) {
 
 await yargs(hideBin(process.argv))
   .scriptName("decknow")
+  .wrap(120)
   .command(
     "dev <entry>",
     "Preview a Decknow HTML deck in a local browser server.",
     (y) =>
-      y.positional("entry", { type: "string", describe: "HTML deck entry file" }).option("port", {
-        alias: "p",
-        type: "number",
-        default: 0,
-        describe: "Port, 0 picks a free port",
-      }),
+      y
+        .positional("entry", { type: "string", describe: "HTML deck entry file" })
+        .option("port", {
+          alias: "p",
+          type: "number",
+          default: 0,
+          describe: "Port, 0 picks a free port",
+        })
+        .example("decknow dev deck.html", "Serve a local preview for a deck")
+        .example("decknow dev deck.html --port 4317", "Serve on a fixed port"),
     runDev
   )
   .command(
@@ -272,7 +520,9 @@ await yargs(hideBin(process.argv))
     (y) =>
       y
         .positional("entry", { type: "string", describe: "HTML deck entry file" })
-        .option("json", { type: "boolean", default: false, describe: "Print JSON output" }),
+        .option("json", { type: "boolean", default: false, describe: "Print JSON output" })
+        .example("decknow validate deck.html", "Validate a deck")
+        .example("decknow validate deck.html --json", "Print machine-readable output"),
     runValidate
   )
   .command(
@@ -300,8 +550,49 @@ await yargs(hideBin(process.argv))
           type: "string",
           default: ".decknow-runs/latest",
           describe: "Output directory",
-        }),
+        })
+        .example("decknow screenshot deck.html --slide 1", "Capture one slide")
+        .example(
+          "decknow screenshot deck.html --all --viewport 1440x900",
+          "Capture every slide at a specific viewport"
+        ),
     runScreenshot
+  )
+  .command(
+    "inspect <entry>",
+    "Render a deck and print slide layout metrics as JSON.",
+    (y) =>
+      y
+        .positional("entry", { type: "string", describe: "HTML deck entry file" })
+        .option("slide", {
+          alias: "s",
+          type: "number",
+          default: 1,
+          describe: "1-based slide number",
+        })
+        .option("all", { type: "boolean", default: false, describe: "Inspect every slide" })
+        .option("step", { type: "number", describe: "Step/click state to set before inspect" })
+        .option("selector", {
+          alias: "q",
+          type: "string",
+          default: ":scope > *",
+          describe: "CSS selector scoped to the active slide",
+        })
+        .option("summary", {
+          alias: "m",
+          type: "boolean",
+          default: false,
+          describe: "Print compact inspect output",
+        })
+        .option("viewport", {
+          alias: "v",
+          type: "string",
+          default: "1920x1080",
+          describe: "Viewport as WIDTHxHEIGHT",
+        })
+        .example("decknow inspect deck.html -s 4 -q dk-grid -m", "Inspect grid layout")
+        .example("decknow inspect deck.html --all -q dk-grid -v 1440x900", "Check every grid"),
+    runInspect
   )
   .demandCommand(1)
   .strict()

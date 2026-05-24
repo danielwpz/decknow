@@ -552,6 +552,7 @@ function injectStyles() {
       --dk-region-span: 1;
       display: grid;
       width: 100%;
+      max-width: 100%;
       min-height: 0;
       grid-template-columns: repeat(var(--dk-grid-columns), minmax(0, 1fr));
       grid-auto-rows: minmax(0, 1fr);

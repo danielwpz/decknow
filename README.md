@@ -36,10 +36,38 @@ Validate the current example deck:
 pnpm validate
 ```
 
+Print CLI help:
+
+```bash
+pnpm exec decknow --help
+pnpm exec decknow inspect --help
+```
+
 Capture the first slide:
 
 ```bash
 pnpm screenshot
+```
+
+Inspect rendered layout metrics for a slide:
+
+```bash
+pnpm inspect
+```
+
+The inspect command prints JSON for the active slide, including element boxes,
+selected computed styles, slide-relative margins, overflow flags, and basic
+diagnostics. It is intended for agent/debug workflows where screenshots are not
+precise enough:
+
+```bash
+pnpm exec decknow inspect examples/project-overview.html -s 4 -q "dk-grid" -v 1440x900
+```
+
+Use `--summary` when the full computed-style payload is too noisy:
+
+```bash
+pnpm exec decknow inspect examples/project-overview.html -s 4 -q "dk-grid" -v 1440x900 -m
 ```
 
 ## Current Packages
@@ -47,7 +75,7 @@ pnpm screenshot
 ```txt
 packages/runtime-standard   Browser runtime for the current HTML DSL
 packages/schema             First-pass schema and element manifest
-packages/cli                Local dev/validate/screenshot CLI
+packages/cli                Local dev/validate/screenshot/inspect CLI
 examples/basic.html         First example deck
 ```
 
