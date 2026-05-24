@@ -51,6 +51,11 @@
         "text": { "type": "string" },
         "align": { "enum": ["left", "center", "right", "start", "end"] },
         "responsive": { "enum": ["auto", "none"] },
+        "phoneColumns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        },
         "children": {
           "type": "array",
           "items": { "$ref": "#/$defs/node" }

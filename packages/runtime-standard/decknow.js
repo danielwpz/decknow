@@ -1021,13 +1021,6 @@ function injectStyles() {
         line-height: 1.24;
       }
 
-      dk-grid:not([responsive="none"])[columns="3"],
-      dk-grid:not([responsive="none"])[columns="4"],
-      dk-grid:not([responsive="none"])[columns="5"],
-      dk-grid:not([responsive="none"])[columns="6"] {
-        --dk-grid-layout-columns: 2;
-      }
-
       dk-stack[direction="horizontal"]:not([responsive="none"]) {
         flex-direction: column;
       }
@@ -1049,6 +1042,15 @@ function injectStyles() {
         --dk-grid-gap-lg: clamp(10px, 2.8cqw, 18px);
         --dk-region-pad: clamp(8px, 2.2cqw, 14px);
         border-radius: 6px;
+      }
+
+      dk-grid:not([responsive="none"]) {
+        --dk-grid-layout-columns: 1;
+        grid-auto-rows: minmax(0, auto);
+      }
+
+      dk-grid:not([responsive="none"])[phone-columns="2"] {
+        --dk-grid-layout-columns: 2;
       }
 
       .dk-slide-dots {

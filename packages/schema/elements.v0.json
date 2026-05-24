@@ -52,6 +52,7 @@
       "description": "Core layout primitive for dividing a slide or region into grid areas.",
       "attributes": {
         "columns": "integer 1-6",
+        "phone-columns": "integer 1-2",
         "rows": "integer 1-6",
         "gap": ["none", "sm", "md", "lg"],
         "align": ["start", "center", "end", "stretch"],
