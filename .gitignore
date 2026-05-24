@@ -1,0 +1,4 @@
+node_modules/
+.decknow-runs/
+dist/
+.DS_Store

@@ -1,0 +1,13 @@
+{
+  "name": "@decknow/runtime-standard",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Batteries-included browser runtime for Decknow AI-native HTML slides.",
+  "exports": {
+    ".": "./decknow.js",
+    "./decknow.js": "./decknow.js"
+  },
+  "files": [
+    "decknow.js"
+  ]
+}

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Decknow Project Overview</title>
+    <script src="../packages/runtime-standard/decknow.js?v=local-1"></script>
+  </head>
+  <body>
+    <dk-deck theme="frontend-dark" fit="contain">
+      <dk-slide layout="hero" align="left">
+        <dk-title>Decknow</dk-title>
+        <dk-subtitle>
+          一个面向 AI agent 的 HTML slides runtime：AI 写声明式内容，runtime 负责排版、预览和截图。
+        </dk-subtitle>
+      </dk-slide>
+
+      <dk-slide layout="grid">
+        <dk-heading level="2">它解决什么问题</dk-heading>
+        <dk-grid columns="3" gap="lg">
+          <dk-region frame tone="accent" valign="top">
+            <dk-heading level="3">受限 DSL</dk-heading>
+            <dk-text>
+              用 <dk-code inline>dk-title</dk-code>、<dk-code inline>dk-text</dk-code>、
+              <dk-code inline>dk-grid</dk-code> 这类语义标签表达意图。
+            </dk-text>
+          </dk-region>
+          <dk-region frame tone="muted" valign="top">
+            <dk-heading level="3">稳定渲染</dk-heading>
+            <dk-text>
+              固定 16:9 stage，基础字体、间距、表格、引用、代码和布局由 runtime 统一处理。
+            </dk-text>
+          </dk-region>
+          <dk-region frame tone="strong" valign="top">
+            <dk-heading level="3">Agent 可观察</dk-heading>
+            <dk-text>
+              CLI 可以打开本地预览、跳到指定页，并用 Playwright 截图给 AI 看实际效果。
+            </dk-text>
+          </dk-region>
+        </dk-grid>
+      </dk-slide>
+
+      <dk-slide layout="grid">
+        <dk-grid columns="2" gap="lg">
+          <dk-region valign="center">
+            <dk-heading level="2">当前 MVP</dk-heading>
+            <dk-text>
+              第一版先把 Markdown 级基础表达和页面划分做扎实，复杂图表、动画和插件系统后续再扩展。
+            </dk-text>
+          </dk-region>
+          <dk-region frame tone="accent" valign="center">
+            <dk-list>
+              <dk-item>标题、正文、链接、引用、代码、基础表格</dk-item>
+              <dk-item>核心布局：grid、region、stack、align</dk-item>
+              <dk-item>保留 <dk-code inline>dk-raw</dk-code> 作为 HTML escape hatch</dk-item>
+              <dk-item>CLI：dev、validate、screenshot</dk-item>
+            </dk-list>
+          </dk-region>
+        </dk-grid>
+      </dk-slide>
+
+      <dk-slide layout="grid">
+        <dk-heading level="2">Markdown 等效元素：文本</dk-heading>
+        <dk-grid columns="2" gap="lg">
+          <dk-region frame tone="accent" valign="top">
+            <dk-heading level="3">Headings / Paragraph</dk-heading>
+            <dk-heading level="4">h2-h4 使用 dk-heading</dk-heading>
+            <dk-text>
+              普通段落对应 <dk-code inline>dk-text</dk-code>。行内语义包括
+              <dk-strong>strong</dk-strong>、<dk-em>emphasis</dk-em>、
+              <dk-link href="https://example.com">link</dk-link> 和
+              <dk-code inline>inline code</dk-code>。
+            </dk-text>
+            <dk-quote cite="Markdown blockquote">
+              引用块对应 dk-quote，主题决定边框、底色和引用样式。
+            </dk-quote>
+          </dk-region>
+
+          <dk-region frame tone="muted" valign="top">
+            <dk-heading level="3">Lists</dk-heading>
+            <dk-list>
+              <dk-item>无序列表：<dk-code inline>- item</dk-code></dk-item>
+              <dk-item>列表项仍然可以包含 <dk-strong>强调</dk-strong> 和代码。</dk-item>
+              <dk-item>适合短句，不鼓励在单页塞长段落。</dk-item>
+            </dk-list>
+            <dk-list ordered>
+              <dk-item>有序步骤</dk-item>
+              <dk-item>流程说明</dk-item>
+              <dk-item>结论排序</dk-item>
+            </dk-list>
+          </dk-region>
+        </dk-grid>
+      </dk-slide>
+
+      <dk-slide layout="grid">
+        <dk-heading level="2">Markdown 等效元素：结构块</dk-heading>
+        <dk-grid columns="2" gap="lg">
+          <dk-region frame tone="accent" valign="top">
+            <dk-heading level="3">Code / Table</dk-heading>
+            <dk-code language="ts">
+const deck = defineDeck({
+  theme: "frontend-dark",
+  slides: 5
+});
+            </dk-code>
+            <dk-table>
+              <dk-row header>
+                <dk-cell>Markdown</dk-cell>
+                <dk-cell>Decknow v0</dk-cell>
+              </dk-row>
+              <dk-row>
+                <dk-cell><dk-code inline>```code```</dk-code></dk-cell>
+                <dk-cell><dk-code inline>dk-code</dk-code></dk-cell>
+              </dk-row>
+              <dk-row>
+                <dk-cell><dk-code inline>| table |</dk-code></dk-cell>
+                <dk-cell><dk-code inline>dk-table</dk-code></dk-cell>
+              </dk-row>
+            </dk-table>
+          </dk-region>
+
+          <dk-region frame tone="muted" valign="top">
+            <dk-heading level="3">Escape / Future</dk-heading>
+            <dk-table>
+              <dk-row header>
+                <dk-cell>Markdown</dk-cell>
+                <dk-cell>当前表达</dk-cell>
+              </dk-row>
+              <dk-row>
+                <dk-cell>image</dk-cell>
+                <dk-cell><dk-code inline>dk-raw</dk-code> / future <dk-code inline>dk-image</dk-code></dk-cell>
+              </dk-row>
+              <dk-row>
+                <dk-cell>thematic break</dk-cell>
+                <dk-cell><dk-code inline>dk-raw</dk-code> / future <dk-code inline>dk-divider</dk-code></dk-cell>
+              </dk-row>
+              <dk-row>
+                <dk-cell>task list</dk-cell>
+                <dk-cell><dk-code inline>dk-list</dk-code> / future checklist</dk-cell>
+              </dk-row>
+            </dk-table>
+            <dk-raw reason="Show Markdown elements not yet promoted into v0 schema" risk="html" frame>
+              <div style="display:grid;gap:12px;color:#f0f6fc">
+                <hr style="width:100%;border:0;border-top:1px solid rgba(57,211,83,.34)" />
+                <label style="display:flex;gap:10px;align-items:center">
+                  <input type="checkbox" checked />
+                  <span>task list item via raw HTML</span>
+                </label>
+              </div>
+            </dk-raw>
+          </dk-region>
+        </dk-grid>
+      </dk-slide>
+    </dk-deck>
+  </body>
+</html>

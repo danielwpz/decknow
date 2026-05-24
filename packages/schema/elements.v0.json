@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://decknow.dev/schema/elements.v0.json",
+  "name": "decknow-elements-v0",
+  "version": "0.0.1",
+  "description": "Initial HTML DSL element manifest for AI-authored Decknow decks.",
+  "globalAttributes": {
+    "align": ["left", "center", "right", "start", "end"],
+    "tone": ["default", "muted", "accent", "strong", "success", "warning", "danger"],
+    "surface": ["auto", "none", "solid", "glass"],
+    "density": ["low", "medium", "high"],
+    "class": "string",
+    "style": "string"
+  },
+  "elements": {
+    "dk-deck": {
+      "description": "Root deck container.",
+      "attributes": {
+        "theme": ["frontend-dark", "studio", "dark", "terminal"],
+        "aspect": ["16:9"],
+        "fit": ["contain"],
+        "debug": "boolean"
+      },
+      "children": ["dk-slide"]
+    },
+    "dk-slide": {
+      "description": "A fixed-stage slide.",
+      "attributes": {
+        "layout": ["default", "hero", "center", "grid", "split"],
+        "align": ["left", "center", "right"],
+        "surface": ["auto", "none", "solid"],
+        "density": ["low", "medium", "high"]
+      },
+      "children": [
+        "dk-title",
+        "dk-subtitle",
+        "dk-heading",
+        "dk-text",
+        "dk-list",
+        "dk-code",
+        "dk-quote",
+        "dk-link",
+        "dk-table",
+        "dk-grid",
+        "dk-region",
+        "dk-stack",
+        "dk-raw"
+      ]
+    },
+    "dk-grid": {
+      "description": "Core layout primitive for dividing a slide or region into grid areas.",
+      "attributes": {
+        "columns": "integer 1-6",
+        "rows": "integer 1-6",
+        "gap": ["none", "sm", "md", "lg"],
+        "align": ["start", "center", "end", "stretch"]
+      },
+      "children": ["dk-region"]
+    },
+    "dk-region": {
+      "description": "A semantic region inside a grid or slide.",
+      "attributes": {
+        "area": "string",
+        "span": "integer 1-6",
+        "align": ["left", "center", "right", "start", "end"],
+        "surface": ["auto", "none", "solid", "glass"],
+        "valign": ["top", "center", "bottom", "stretch"]
+      },
+      "children": ["flow"]
+    },
+    "dk-stack": {
+      "description": "A vertical or horizontal content group.",
+      "attributes": {
+        "direction": ["vertical", "horizontal"],
+        "gap": ["none", "sm", "md", "lg"],
+        "align": ["left", "center", "right", "start", "end", "stretch"],
+        "valign": ["top", "center", "bottom", "stretch"]
+      },
+      "children": ["flow"]
+    },
+    "dk-raw": {
+      "description": "Explicit escape hatch for raw HTML/CSS/JS when the core DSL is insufficient. AI should use this sparingly and include a reason.",
+      "attributes": {
+        "reason": "string",
+        "risk": ["html", "css", "js", "mixed"]
+      },
+      "children": ["raw-html"]
+    },
+    "dk-title": {
+      "description": "Primary slide title, equivalent to Markdown h1."
+    },
+    "dk-subtitle": {
+      "description": "Lead subtitle or supporting copy."
+    },
+    "dk-heading": {
+      "description": "Secondary heading, equivalent to Markdown h2-h4.",
+      "attributes": {
+        "level": ["2", "3", "4"],
+        "align": ["left", "center", "right"]
+      }
+    },
+    "dk-text": {
+      "description": "Paragraph/body text, equivalent to Markdown paragraph.",
+      "attributes": {
+        "align": ["left", "center", "right"],
+        "tone": ["default", "muted", "accent"]
+      }
+    },
+    "dk-list": {
+      "description": "Ordered or unordered list.",
+      "attributes": {
+        "ordered": "boolean",
+        "reveal": "boolean"
+      },
+      "children": ["dk-item"]
+    },
+    "dk-item": {
+      "description": "List item."
+    },
+    "dk-code": {
+      "description": "Code block or inline code.",
+      "attributes": {
+        "language": "string",
+        "inline": "boolean"
+      }
+    },
+    "dk-quote": {
+      "description": "Block quote.",
+      "attributes": {
+        "cite": "string"
+      }
+    },
+    "dk-link": {
+      "description": "Inline link.",
+      "attributes": {
+        "href": "string",
+        "target": "string"
+      }
+    },
+    "dk-table": {
+      "description": "Basic table.",
+      "children": ["dk-row", "dk-tr"]
+    },
+    "dk-row": {
+      "description": "Table row.",
+      "attributes": {
+        "header": "boolean"
+      },
+      "children": ["dk-cell"]
+    },
+    "dk-cell": {
+      "description": "Table cell.",
+      "attributes": {
+        "align": ["left", "center", "right"]
+      }
+    },
+    "dk-strong": {
+      "description": "Inline strong emphasis."
+    },
+    "dk-em": {
+      "description": "Inline emphasis."
+    }
+  },
+  "notes": [
+    "Core schema intentionally includes alignment, grid regions, and stack primitives. These are baseline authoring needs, not plugin features.",
+    "Plugins should extend diagrams, charts, animations, exporters, and specialized components, not replace core layout primitives.",
+    "Raw HTML/CSS/JS is allowed only through dk-raw or ordinary HTML inside a slide, but validators should warn unless the raw zone declares a reason. This keeps HTML-backed flexibility without making arbitrary markup the default authoring path."
+  ]
+}

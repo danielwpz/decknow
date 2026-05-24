@@ -1,0 +1,24 @@
+{
+  "name": "@decknow/cli",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "CLI for previewing, validating, and screenshotting Decknow decks.",
+  "bin": {
+    "decknow": "./bin/decknow.js"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
+  "dependencies": {
+    "yargs": "^17.7.2"
+  },
+  "peerDependencies": {
+    "playwright": "^1.52.0"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
+  }
+}

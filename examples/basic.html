@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Decknow Basic Deck</title>
+    <script src="../packages/runtime-standard/decknow.js"></script>
+  </head>
+  <body>
+    <dk-deck theme="frontend-dark" fit="contain">
+      <dk-slide layout="hero" align="left">
+        <dk-title>AI Native HTML Slides</dk-title>
+        <dk-subtitle>
+          A constrained, inspectable runtime for AI-generated presentation decks.
+        </dk-subtitle>
+      </dk-slide>
+
+      <dk-slide layout="default">
+        <dk-heading level="2">Markdown-like Core Elements</dk-heading>
+        <dk-text>
+          The first schema covers the baseline authoring primitives an agent needs:
+          headings, paragraphs, emphasis, links, lists, code, quotes, and tables.
+        </dk-text>
+        <dk-list>
+          <dk-item>Semantic tags instead of arbitrary div soup.</dk-item>
+          <dk-item>CSS variables and alignment props for small adjustments.</dk-item>
+          <dk-item>Raw HTML remains available as an explicit escape hatch.</dk-item>
+        </dk-list>
+      </dk-slide>
+
+      <dk-slide layout="grid">
+        <dk-grid columns="2" rows="2" gap="lg">
+          <dk-region frame valign="top">
+            <dk-heading level="3">Left Region</dk-heading>
+            <dk-text align="left">
+              Grid and region primitives are core layout features, not plugins.
+            </dk-text>
+          </dk-region>
+          <dk-region frame align="center" valign="center">
+            <dk-heading level="3" align="center">Centered</dk-heading>
+            <dk-text align="center">Agents can choose alignment semantically.</dk-text>
+          </dk-region>
+          <dk-region frame span="2">
+            <dk-stack direction="horizontal" gap="lg" align="stretch">
+              <dk-text>
+                A region can span columns and contain nested stacks.
+              </dk-text>
+              <dk-quote cite="Decknow design note">
+                Core layout must handle normal slide composition before plugins exist.
+              </dk-quote>
+            </dk-stack>
+          </dk-region>
+        </dk-grid>
+      </dk-slide>
+
+      <dk-slide layout="default">
+        <dk-heading level="2">Code</dk-heading>
+        <dk-text>
+          Inline code uses <dk-code inline>dk-code inline</dk-code>, while blocks preserve formatting.
+        </dk-text>
+        <dk-code language="html">
+&lt;dk-slide layout="center"&gt;
+  &lt;dk-title&gt;Hello Decknow&lt;/dk-title&gt;
+  &lt;dk-subtitle&gt;Rendered by the runtime&lt;/dk-subtitle&gt;
+&lt;/dk-slide&gt;
+        </dk-code>
+      </dk-slide>
+
+      <dk-slide layout="default">
+        <dk-heading level="2">Basic Table</dk-heading>
+        <dk-table>
+          <dk-row header>
+            <dk-cell>Element</dk-cell>
+            <dk-cell>Markdown equivalent</dk-cell>
+            <dk-cell>Purpose</dk-cell>
+          </dk-row>
+          <dk-row>
+            <dk-cell><dk-code inline>dk-title</dk-code></dk-cell>
+            <dk-cell>h1</dk-cell>
+            <dk-cell>Primary slide title</dk-cell>
+          </dk-row>
+          <dk-row>
+            <dk-cell><dk-code inline>dk-list</dk-code></dk-cell>
+            <dk-cell>ul / ol</dk-cell>
+            <dk-cell>Dense but readable lists</dk-cell>
+          </dk-row>
+          <dk-row>
+            <dk-cell><dk-code inline>dk-table</dk-code></dk-cell>
+            <dk-cell>table</dk-cell>
+            <dk-cell>Small comparison grids</dk-cell>
+          </dk-row>
+        </dk-table>
+      </dk-slide>
+
+      <dk-slide layout="center">
+        <dk-heading level="2" align="center">Escape Hatch</dk-heading>
+        <dk-text align="center">
+          When the core DSL is not enough, agents may use raw HTML inside a declared zone.
+        </dk-text>
+        <dk-raw reason="MVP lacks a built-in badge component" risk="html" frame>
+          <div style="display:inline-flex;gap:10px;align-items:center;padding:12px 18px;border:1px solid rgba(57,211,83,.28);border-radius:999px;background:rgba(13,17,23,.68);color:#f0f6fc">
+            <span style="width:10px;height:10px;border-radius:50%;background:#39d353"></span>
+            <strong>Raw HTML is allowed, but must be traceable.</strong>
+          </div>
+        </dk-raw>
+      </dk-slide>
+    </dk-deck>
+  </body>
+</html>

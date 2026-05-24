@@ -1,0 +1,20 @@
+{
+  "name": "decknow-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.15.0",
+  "scripts": {
+    "dev": "node packages/cli/bin/decknow.js dev examples/basic.html",
+    "fmt": "biome format --write .",
+    "lint": "biome check .",
+    "precommit": "biome check . && node packages/cli/bin/decknow.js validate examples/basic.html && node packages/cli/bin/decknow.js validate examples/project-overview.html",
+    "validate": "node packages/cli/bin/decknow.js validate examples/basic.html && node packages/cli/bin/decknow.js validate examples/project-overview.html",
+    "screenshot": "node packages/cli/bin/decknow.js screenshot examples/basic.html --slide 1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.15",
+    "@decknow/cli": "workspace:*",
+    "playwright": "^1.52.0",
+    "yargs": "^17.7.2"
+  }
+}

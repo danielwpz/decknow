@@ -1,0 +1,14 @@
+{
+  "name": "@decknow/schema",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Initial Decknow DSL schemas and element manifest.",
+  "exports": {
+    "./elements": "./elements.v0.json",
+    "./ast": "./decknow.v0.schema.json"
+  },
+  "files": [
+    "elements.v0.json",
+    "decknow.v0.schema.json"
+  ]
+}
