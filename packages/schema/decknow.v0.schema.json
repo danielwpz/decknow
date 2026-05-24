@@ -6,7 +6,8 @@
   "required": ["version", "slides"],
   "properties": {
     "version": { "const": 0 },
-    "theme": { "enum": ["frontend-dark", "studio", "dark", "terminal"] },
+    "theme": { "enum": ["terminal-green"] },
+    "swipe": { "enum": ["auto", "none"] },
     "slides": {
       "type": "array",
       "minItems": 1,
@@ -49,6 +50,7 @@
         },
         "text": { "type": "string" },
         "align": { "enum": ["left", "center", "right", "start", "end"] },
+        "responsive": { "enum": ["auto", "none"] },
         "children": {
           "type": "array",
           "items": { "$ref": "#/$defs/node" }

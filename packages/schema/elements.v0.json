@@ -16,9 +16,10 @@
     "dk-deck": {
       "description": "Root deck container.",
       "attributes": {
-        "theme": ["frontend-dark", "studio", "dark", "terminal"],
+        "theme": ["terminal-green"],
         "aspect": ["16:9"],
         "fit": ["contain"],
+        "swipe": ["auto", "none"],
         "debug": "boolean"
       },
       "children": ["dk-slide"]
@@ -53,7 +54,8 @@
         "columns": "integer 1-6",
         "rows": "integer 1-6",
         "gap": ["none", "sm", "md", "lg"],
-        "align": ["start", "center", "end", "stretch"]
+        "align": ["start", "center", "end", "stretch"],
+        "responsive": ["auto", "none"]
       },
       "children": ["dk-region"]
     },
@@ -74,7 +76,8 @@
         "direction": ["vertical", "horizontal"],
         "gap": ["none", "sm", "md", "lg"],
         "align": ["left", "center", "right", "start", "end", "stretch"],
-        "valign": ["top", "center", "bottom", "stretch"]
+        "valign": ["top", "center", "bottom", "stretch"],
+        "responsive": ["auto", "none"]
       },
       "children": ["flow"]
     },

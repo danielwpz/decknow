@@ -108,7 +108,7 @@ function injectStyles() {
   style.textContent = `
     :root,
     dk-deck,
-    dk-deck[theme="frontend-dark"] {
+    dk-deck[theme="terminal-green"] {
       --dk-deck-bg: #050608;
       --dk-deck-background:
         radial-gradient(circle at 16% 12%, rgba(57, 211, 83, 0.16), transparent 28%),
@@ -147,7 +147,50 @@ function injectStyles() {
       --dk-table-header-surface: rgba(57, 211, 83, 0.16);
       --dk-shadow: 0 30px 90px rgba(0, 0, 0, 0.48);
       --dk-radius: 8px;
+      --dk-deck-pad: clamp(12px, 2vw, 28px);
+      --dk-stage-vh: 100vh;
+      --dk-stage-aspect: 16 / 9;
+      --dk-stage-fit-width: 16;
+      --dk-stage-fit-height: 9;
       --dk-slide-pad: clamp(28px, 5.2cqw, 76px);
+      --dk-slide-gap: clamp(14px, 2.2cqw, 30px);
+      --dk-grid-gap: clamp(14px, 2cqw, 28px);
+      --dk-grid-gap-sm: clamp(8px, 1.2cqw, 16px);
+      --dk-grid-gap-lg: clamp(20px, 3cqw, 42px);
+      --dk-stack-gap: clamp(10px, 1.5cqw, 22px);
+      --dk-stack-gap-sm: clamp(6px, 1cqw, 14px);
+      --dk-stack-gap-lg: clamp(18px, 2.4cqw, 36px);
+      --dk-region-pad: clamp(14px, 2cqw, 28px);
+      --dk-title-size: clamp(42px, 7.6cqw, 108px);
+      --dk-title-size-tablet: clamp(36px, 6.8cqw, 72px);
+      --dk-title-size-phone: clamp(28px, 7cqw, 42px);
+      --dk-subtitle-size: clamp(17px, 1.9cqw, 30px);
+      --dk-subtitle-size-tablet: clamp(14px, 1.8cqw, 20px);
+      --dk-subtitle-size-phone: clamp(12px, 3.4cqw, 16px);
+      --dk-heading-size: clamp(28px, 4cqw, 58px);
+      --dk-heading-size-tablet: clamp(22px, 3.4cqw, 38px);
+      --dk-heading-size-phone: clamp(18px, 5.2cqw, 26px);
+      --dk-heading-3-size: clamp(22px, 2.8cqw, 40px);
+      --dk-heading-3-size-tablet: clamp(18px, 2.6cqw, 28px);
+      --dk-heading-3-size-phone: clamp(15px, 4.2cqw, 20px);
+      --dk-heading-4-size: clamp(18px, 2.1cqw, 28px);
+      --dk-heading-4-size-tablet: clamp(15px, 2.1cqw, 22px);
+      --dk-heading-4-size-phone: clamp(13px, 3.6cqw, 17px);
+      --dk-text-size: clamp(17px, 1.65cqw, 26px);
+      --dk-text-size-tablet: clamp(13px, 1.5cqw, 18px);
+      --dk-text-size-phone: clamp(11px, 3.1cqw, 14px);
+      --dk-item-size: clamp(17px, 1.58cqw, 25px);
+      --dk-item-size-tablet: clamp(13px, 1.45cqw, 18px);
+      --dk-item-size-phone: clamp(11px, 3cqw, 14px);
+      --dk-code-size: clamp(13px, 1.28cqw, 20px);
+      --dk-code-size-tablet: clamp(11px, 1.16cqw, 15px);
+      --dk-code-size-phone: clamp(10px, 2.7cqw, 12px);
+      --dk-quote-size: clamp(24px, 3.3cqw, 50px);
+      --dk-quote-size-tablet: clamp(18px, 2.7cqw, 30px);
+      --dk-quote-size-phone: clamp(15px, 4.2cqw, 20px);
+      --dk-cell-size: clamp(13px, 1.22cqw, 19px);
+      --dk-cell-size-tablet: clamp(11px, 1.1cqw, 15px);
+      --dk-cell-size-phone: clamp(10px, 2.6cqw, 12px);
       --dk-font-display: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
       --dk-font-body: var(--dk-font-display);
       --dk-font-mono: var(--dk-font-display);
@@ -157,47 +200,70 @@ function injectStyles() {
 
     html,
     body {
+      height: 100%;
       min-height: 100%;
       margin: 0;
-      overflow-x: hidden;
+      overflow: hidden;
     }
 
     body {
       background: var(--dk-deck-bg);
+      overscroll-behavior: none;
+    }
+
+    @supports (height: 100svh) {
+      dk-deck,
+      dk-deck[theme] {
+        --dk-stage-vh: 100svh;
+      }
+    }
+
+    @supports (height: 100dvh) {
+      dk-deck,
+      dk-deck[theme] {
+        --dk-stage-vh: 100dvh;
+      }
     }
 
     dk-deck {
-      min-height: 100dvh;
+      width: 100%;
+      min-height: var(--dk-stage-vh);
+      height: var(--dk-stage-vh);
       display: grid;
       place-items: center;
       position: relative;
-      padding: clamp(12px, 2vw, 28px);
+      padding: var(--dk-deck-pad);
       box-sizing: border-box;
+      overflow: hidden;
       background: var(--dk-deck-background);
       font-family: var(--dk-font-body);
       color: var(--dk-slide-ink);
       outline: none;
       user-select: text;
       -webkit-user-select: text;
-    }
-
-    dk-deck[theme="studio"],
-    dk-deck[theme="terminal"] {
-      --dk-accent: #39d353;
-      --dk-accent-2: #ff8f3d;
+      overscroll-behavior: none;
+      touch-action: pan-x pinch-zoom;
     }
 
     dk-slide {
-      width: min(calc(100vw - clamp(24px, 4vw, 56px)), calc((100dvh - clamp(24px, 4vw, 56px)) * 16 / 9));
-      max-height: calc(100dvh - clamp(24px, 4vw, 56px));
-      aspect-ratio: 16 / 9;
+      width: min(
+        calc(100vw - var(--dk-deck-pad) - var(--dk-deck-pad)),
+        calc(
+          (var(--dk-stage-vh) - var(--dk-deck-pad) - var(--dk-deck-pad)) *
+          var(--dk-stage-fit-width) /
+          var(--dk-stage-fit-height)
+        )
+      );
+      max-height: calc(var(--dk-stage-vh) - var(--dk-deck-pad) - var(--dk-deck-pad));
+      aspect-ratio: var(--dk-stage-aspect);
       display: none;
       flex-direction: column;
       justify-content: center;
-      gap: clamp(14px, 2.2cqw, 30px);
+      gap: var(--dk-slide-gap);
       box-sizing: border-box;
       overflow: hidden;
       position: relative;
+      isolation: isolate;
       container-name: dk-slide;
       container-type: size;
       padding: var(--dk-slide-pad);
@@ -208,6 +274,40 @@ function injectStyles() {
       box-shadow: var(--dk-shadow);
       user-select: text;
       -webkit-user-select: text;
+    }
+
+    @media (max-width: 1180px) {
+      dk-deck,
+      dk-deck[theme] {
+        --dk-deck-pad: clamp(10px, 2vw, 22px);
+      }
+    }
+
+    @media (max-width: 820px) and (orientation: portrait) {
+      dk-deck,
+      dk-deck[theme] {
+        --dk-deck-pad: clamp(10px, 2vw, 16px);
+      }
+    }
+
+    @media (min-width: 641px) and (orientation: portrait) {
+      dk-deck,
+      dk-deck[theme] {
+        --dk-deck-pad: clamp(14px, 2.2vw, 24px);
+        --dk-stage-aspect: 3 / 4;
+        --dk-stage-fit-width: 3;
+        --dk-stage-fit-height: 4;
+      }
+    }
+
+    @media (min-width: 900px) and (orientation: landscape) and (max-aspect-ratio: 1.45) {
+      dk-deck,
+      dk-deck[theme] {
+        --dk-deck-pad: clamp(14px, 2.2vw, 24px);
+        --dk-stage-aspect: 4 / 3;
+        --dk-stage-fit-width: 4;
+        --dk-stage-fit-height: 3;
+      }
     }
 
     dk-slide[surface="none"] {
@@ -251,8 +351,7 @@ function injectStyles() {
 
     dk-slide[layout="hero"] {
       align-items: flex-start;
-      justify-content: flex-end;
-      padding-bottom: clamp(44px, 7cqh, 92px);
+      justify-content: center;
     }
 
     dk-slide[layout="center"] {
@@ -307,12 +406,13 @@ function injectStyles() {
       display: block;
       max-width: 15ch;
       font-family: var(--dk-font-display);
-      font-size: clamp(42px, 7.6cqw, 108px);
+      font-size: var(--dk-title-size);
       line-height: 0.96;
       letter-spacing: 0;
       font-weight: 800;
       color: var(--dk-slide-ink);
       text-wrap: balance;
+      overflow-wrap: anywhere;
       text-shadow: 0 0 36px rgba(57, 211, 83, 0.12);
     }
 
@@ -325,18 +425,20 @@ function injectStyles() {
       display: block;
       max-width: 56ch;
       color: var(--dk-muted);
-      font-size: clamp(17px, 1.9cqw, 30px);
+      font-size: var(--dk-subtitle-size);
       line-height: 1.34;
       font-weight: 500;
+      overflow-wrap: anywhere;
     }
 
     dk-heading {
       display: block;
       font-family: var(--dk-font-display);
-      font-size: clamp(28px, 4cqw, 58px);
+      font-size: var(--dk-heading-size);
       line-height: 1.08;
       font-weight: 780;
       text-wrap: balance;
+      overflow-wrap: anywhere;
     }
 
     dk-heading[level="2"]::before {
@@ -346,19 +448,20 @@ function injectStyles() {
     }
 
     dk-heading[level="3"] {
-      font-size: clamp(22px, 2.8cqw, 40px);
+      font-size: var(--dk-heading-3-size);
     }
 
     dk-heading[level="4"] {
-      font-size: clamp(18px, 2.1cqw, 28px);
+      font-size: var(--dk-heading-4-size);
     }
 
     dk-text {
       display: block;
       max-width: 68ch;
-      font-size: clamp(17px, 1.65cqw, 26px);
+      font-size: var(--dk-text-size);
       line-height: 1.48;
       color: var(--dk-slide-ink);
+      overflow-wrap: anywhere;
     }
 
     dk-text[tone="muted"] {
@@ -372,7 +475,7 @@ function injectStyles() {
     dk-list {
       display: flex;
       flex-direction: column;
-      gap: clamp(10px, 1.45cqw, 22px);
+      gap: var(--dk-stack-gap);
       margin: 0;
       padding: 0;
       counter-reset: dk-list;
@@ -381,9 +484,10 @@ function injectStyles() {
     dk-item {
       display: flex;
       align-items: start;
-      gap: clamp(10px, 1.2cqw, 18px);
-      font-size: clamp(17px, 1.58cqw, 25px);
+      gap: clamp(8px, 1.2cqw, 18px);
+      font-size: var(--dk-item-size);
       line-height: 1.38;
+      overflow-wrap: anywhere;
     }
 
     .dk-item__body {
@@ -437,7 +541,7 @@ function injectStyles() {
       color: var(--dk-code-ink);
       border: 1px solid rgba(57, 211, 83, 0.22);
       font-family: var(--dk-font-mono);
-      font-size: clamp(13px, 1.28cqw, 20px);
+      font-size: var(--dk-code-size);
       line-height: 1.55;
       white-space: pre-wrap;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -461,12 +565,12 @@ function injectStyles() {
     dk-quote {
       display: block;
       max-width: 54ch;
-      padding: clamp(18px, 2.4cqw, 34px);
+      padding: clamp(14px, 2.4cqw, 34px);
       border-left: clamp(5px, 0.75cqw, 10px) solid var(--dk-accent-2);
       background: var(--dk-quote-surface);
       border-radius: 0 8px 8px 0;
       font-family: var(--dk-font-display);
-      font-size: clamp(24px, 3.3cqw, 50px);
+      font-size: var(--dk-quote-size);
       line-height: 1.13;
     }
 
@@ -489,6 +593,7 @@ function injectStyles() {
       text-decoration-thickness: 0.12em;
       text-underline-offset: 0.18em;
       font-weight: 700;
+      overflow-wrap: anywhere;
     }
 
     dk-table {
@@ -525,7 +630,7 @@ function injectStyles() {
       min-width: 0;
       padding: clamp(10px, 1.25cqw, 18px);
       border-right: 1px solid var(--dk-border);
-      font-size: clamp(13px, 1.22cqw, 19px);
+      font-size: var(--dk-cell-size);
       line-height: 1.35;
     }
 
@@ -554,9 +659,10 @@ function injectStyles() {
       width: 100%;
       max-width: 100%;
       min-height: 0;
-      grid-template-columns: repeat(var(--dk-grid-columns), minmax(0, 1fr));
+      --dk-grid-layout-columns: var(--dk-grid-columns);
+      grid-template-columns: repeat(var(--dk-grid-layout-columns), minmax(0, 1fr));
       grid-auto-rows: minmax(0, 1fr);
-      gap: clamp(14px, 2cqw, 28px);
+      gap: var(--dk-grid-gap);
       align-items: stretch;
     }
 
@@ -565,11 +671,11 @@ function injectStyles() {
     }
 
     dk-grid[gap="sm"] {
-      gap: clamp(8px, 1.2cqw, 16px);
+      gap: var(--dk-grid-gap-sm);
     }
 
     dk-grid[gap="lg"] {
-      gap: clamp(20px, 3cqw, 42px);
+      gap: var(--dk-grid-gap-lg);
     }
 
     dk-grid[align="start"] {
@@ -590,12 +696,12 @@ function injectStyles() {
       min-height: 0;
       flex-direction: column;
       justify-content: center;
-      gap: clamp(10px, 1.5cqw, 22px);
+      gap: var(--dk-stack-gap);
       grid-column: span var(--dk-region-span);
     }
 
     dk-region[frame] {
-      padding: clamp(14px, 2cqw, 28px);
+      padding: var(--dk-region-pad);
       border: 1px solid var(--dk-region-border, var(--dk-panel-border));
       border-left: 4px solid var(--dk-region-accent, var(--dk-accent));
       border-radius: 8px;
@@ -669,7 +775,7 @@ function injectStyles() {
       min-width: 0;
       min-height: 0;
       flex-direction: column;
-      gap: clamp(10px, 1.5cqw, 22px);
+      gap: var(--dk-stack-gap);
     }
 
     dk-stack[direction="horizontal"] {
@@ -682,11 +788,11 @@ function injectStyles() {
     }
 
     dk-stack[gap="sm"] {
-      gap: clamp(6px, 1cqw, 14px);
+      gap: var(--dk-stack-gap-sm);
     }
 
     dk-stack[gap="lg"] {
-      gap: clamp(18px, 2.4cqw, 36px);
+      gap: var(--dk-stack-gap-lg);
     }
 
     dk-stack[align="start"],
@@ -712,7 +818,7 @@ function injectStyles() {
     }
 
     dk-raw[frame] {
-      padding: clamp(14px, 2cqw, 28px);
+      padding: var(--dk-region-pad);
       border: 1px dashed var(--dk-border);
       border-radius: 8px;
       background: rgba(13, 17, 23, 0.38);
@@ -765,6 +871,7 @@ function injectStyles() {
       box-shadow: 0 0 0 1px rgba(240, 246, 252, 0.08);
       opacity: 0.72;
       transition:
+        width 180ms ease,
         height 180ms ease,
         background 180ms ease,
         box-shadow 180ms ease,
@@ -785,6 +892,181 @@ function injectStyles() {
       overflow: hidden;
       clip: rect(0 0 0 0);
       white-space: nowrap;
+    }
+
+    @container dk-slide (max-width: 900px) {
+      dk-title {
+        font-size: var(--dk-title-size-tablet);
+      }
+
+      dk-subtitle {
+        font-size: var(--dk-subtitle-size-tablet);
+        line-height: 1.32;
+      }
+
+      dk-heading {
+        font-size: var(--dk-heading-size-tablet);
+      }
+
+      dk-heading[level="3"] {
+        font-size: var(--dk-heading-3-size-tablet);
+      }
+
+      dk-heading[level="4"] {
+        font-size: var(--dk-heading-4-size-tablet);
+      }
+
+      dk-text {
+        font-size: var(--dk-text-size-tablet);
+        line-height: 1.42;
+      }
+
+      dk-item {
+        font-size: var(--dk-item-size-tablet);
+        line-height: 1.32;
+      }
+
+      dk-code pre {
+        font-size: var(--dk-code-size-tablet);
+        line-height: 1.44;
+        max-height: 34cqh;
+      }
+
+      dk-quote {
+        font-size: var(--dk-quote-size-tablet);
+      }
+
+      dk-cell,
+      dk-th,
+      dk-td {
+        font-size: var(--dk-cell-size-tablet);
+      }
+
+      dk-grid:not([responsive="none"])[columns="5"],
+      dk-grid:not([responsive="none"])[columns="6"] {
+        --dk-grid-layout-columns: 3;
+      }
+
+      dk-grid:not([responsive="none"])[columns="4"] {
+        --dk-grid-layout-columns: 2;
+      }
+    }
+
+    @container dk-slide (max-width: 560px) {
+      dk-title {
+        max-width: 100%;
+        font-size: var(--dk-title-size-phone);
+      }
+
+      dk-subtitle {
+        max-width: 100%;
+        font-size: var(--dk-subtitle-size-phone);
+        line-height: 1.28;
+      }
+
+      dk-heading {
+        font-size: var(--dk-heading-size-phone);
+        line-height: 1.05;
+      }
+
+      dk-heading[level="3"] {
+        font-size: var(--dk-heading-3-size-phone);
+      }
+
+      dk-heading[level="4"] {
+        font-size: var(--dk-heading-4-size-phone);
+      }
+
+      dk-text {
+        font-size: var(--dk-text-size-phone);
+        line-height: 1.32;
+      }
+
+      dk-list {
+        gap: clamp(5px, 1.2cqw, 10px);
+      }
+
+      dk-item {
+        gap: clamp(5px, 1.2cqw, 10px);
+        font-size: var(--dk-item-size-phone);
+        line-height: 1.24;
+      }
+
+      dk-code pre {
+        padding: clamp(8px, 2.4cqw, 14px);
+        font-size: var(--dk-code-size-phone);
+        line-height: 1.34;
+        max-height: 30cqh;
+      }
+
+      dk-code[inline] code {
+        white-space: normal;
+        word-break: break-word;
+      }
+
+      dk-quote {
+        padding: clamp(10px, 2.4cqw, 16px);
+        font-size: var(--dk-quote-size-phone);
+      }
+
+      dk-table {
+        overflow-x: auto;
+      }
+
+      dk-cell,
+      dk-th,
+      dk-td {
+        padding: clamp(6px, 1.6cqw, 10px);
+        font-size: var(--dk-cell-size-phone);
+        line-height: 1.24;
+      }
+
+      dk-grid:not([responsive="none"])[columns="3"],
+      dk-grid:not([responsive="none"])[columns="4"],
+      dk-grid:not([responsive="none"])[columns="5"],
+      dk-grid:not([responsive="none"])[columns="6"] {
+        --dk-grid-layout-columns: 2;
+      }
+
+      dk-stack[direction="horizontal"]:not([responsive="none"]) {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 640px) and (orientation: portrait) {
+      dk-deck,
+      dk-deck[theme] {
+        --dk-deck-pad: 12px;
+        --dk-stage-aspect: 9 / 16;
+        --dk-stage-fit-width: 9;
+        --dk-stage-fit-height: 16;
+      }
+
+      dk-slide {
+        --dk-slide-pad: clamp(22px, 7cqw, 30px);
+        --dk-slide-gap: clamp(8px, 2.2cqw, 14px);
+        --dk-grid-gap: clamp(8px, 2.2cqw, 14px);
+        --dk-grid-gap-lg: clamp(10px, 2.8cqw, 18px);
+        --dk-region-pad: clamp(8px, 2.2cqw, 14px);
+        border-radius: 6px;
+      }
+
+      .dk-slide-dots {
+        top: auto;
+        right: 50%;
+        bottom: max(10px, env(safe-area-inset-bottom));
+        flex-direction: row;
+        transform: translateX(50%) translateY(8px);
+      }
+
+      .dk-slide-dots[data-visible="true"] {
+        transform: translateX(50%) translateY(0);
+      }
+
+      .dk-slide-dot[aria-current="true"] {
+        width: clamp(18px, 7vw, 30px);
+        height: clamp(6px, 1.8vw, 9px);
+      }
     }
 
     @media (max-height: 620px) {
@@ -855,6 +1137,19 @@ function afterChildrenParsed(element, callback) {
   queueMicrotask(callback);
 }
 
+function isEditableOrInteractiveTarget(target) {
+  return Boolean(
+    target?.closest?.(
+      'a, button, input, textarea, select, summary, [contenteditable="true"], [data-dk-swipe="ignore"]'
+    )
+  );
+}
+
+function hasTextSelection() {
+  const selection = window.getSelection?.();
+  return Boolean(selection && !selection.isCollapsed && selection.toString().trim());
+}
+
 class DKDeck extends HTMLElement {
   connectedCallback() {
     if (this.dataset.dkScheduled === "true") return;
@@ -877,6 +1172,7 @@ class DKDeck extends HTMLElement {
     this.ensureSlideDots();
     this.ensureDebugPanel();
     this.setupKeyboard();
+    this.setupPointerNavigation();
     this.goToSlide(this.readInitialSlide(), { silent: true });
     this.focusDeck();
 
@@ -1004,6 +1300,107 @@ class DKDeck extends HTMLElement {
     window.addEventListener("keydown", handleKey, { capture: true, passive: false });
   }
 
+  setupPointerNavigation() {
+    if (this._pointerNavigationReady) return;
+    this._pointerNavigationReady = true;
+    if (this.getAttribute("swipe") === "none") return;
+
+    const swipe = {
+      active: false,
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      lastX: 0,
+      lastY: 0,
+      intent: null,
+      startedAt: 0,
+    };
+
+    const resetSwipe = () => {
+      swipe.active = false;
+      swipe.pointerId = null;
+      swipe.intent = null;
+    };
+
+    this.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (event.pointerType && !["touch", "pen"].includes(event.pointerType)) return;
+        if (!event.isPrimary || isEditableOrInteractiveTarget(event.target)) return;
+        if (hasTextSelection()) return;
+
+        swipe.active = true;
+        swipe.pointerId = event.pointerId;
+        swipe.startX = event.clientX;
+        swipe.startY = event.clientY;
+        swipe.lastX = event.clientX;
+        swipe.lastY = event.clientY;
+        swipe.intent = null;
+        swipe.startedAt = performance.now();
+      },
+      { passive: true }
+    );
+
+    this.addEventListener(
+      "pointermove",
+      (event) => {
+        if (!swipe.active || event.pointerId !== swipe.pointerId) return;
+
+        swipe.lastX = event.clientX;
+        swipe.lastY = event.clientY;
+        const dx = swipe.lastX - swipe.startX;
+        const dy = swipe.lastY - swipe.startY;
+        const absX = Math.abs(dx);
+        const absY = Math.abs(dy);
+
+        if (!swipe.intent && (absX > 10 || absY > 10)) {
+          swipe.intent = absX > absY * 1.25 ? "horizontal" : "vertical";
+        }
+
+        if (swipe.intent === "vertical" && event.cancelable) {
+          event.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+
+    this.addEventListener(
+      "pointerup",
+      (event) => {
+        if (!swipe.active || event.pointerId !== swipe.pointerId) return;
+
+        const dx = event.clientX - swipe.startX;
+        const dy = event.clientY - swipe.startY;
+        const absX = Math.abs(dx);
+        const absY = Math.abs(dy);
+        const elapsed = performance.now() - swipe.startedAt;
+        const threshold = Math.max(44, Math.min(96, window.innerHeight * 0.07));
+        const isSwipe = absY >= threshold && absY > absX * 1.25 && elapsed < 1200;
+
+        resetSwipe();
+
+        if (!isSwipe || hasTextSelection()) return;
+        debugLog("swipe", {
+          direction: dy < 0 ? "next" : "previous",
+          dx: Math.round(dx),
+          dy: Math.round(dy),
+          elapsed: Math.round(elapsed),
+          threshold: Math.round(threshold),
+        });
+
+        if (dy < 0) {
+          this.next();
+        } else {
+          this.previous();
+        }
+      },
+      { passive: true }
+    );
+
+    this.addEventListener("pointercancel", resetSwipe, { passive: true });
+    this.addEventListener("lostpointercapture", resetSwipe, { passive: true });
+  }
+
   focusDeck() {
     requestAnimationFrame(() => {
       this.focus({ preventScroll: true });
@@ -1107,8 +1504,13 @@ class DKDeck extends HTMLElement {
       slideNumber: this.currentSlide + 1,
       step: this.currentStep,
       slideCount: this.getSlideCount(),
-      theme: this.getAttribute("theme") || "frontend-dark",
+      theme: this.getAttribute("theme") || "terminal-green",
       fit: this.getAttribute("fit") || "contain",
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+        orientation: window.innerWidth >= window.innerHeight ? "landscape" : "portrait",
+      },
     };
   }
 }

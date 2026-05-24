@@ -79,12 +79,28 @@ packages/cli                Local dev/validate/screenshot/inspect CLI
 examples/basic.html         First example deck
 ```
 
-The current built-in default theme is `frontend-dark`. It is intentionally kept
+The current built-in default theme is `terminal-green`. It is intentionally kept
 inside `packages/runtime-standard` for the first local-development version so a
 deck still only needs one runtime script. Its visual direction follows the
 current `frontend-slides` default style: black stage, monospace typography,
 green primary accents, orange contrast accents, and code-review style translucent
-surfaces. `studio` remains as a temporary compatibility alias.
+surfaces.
+
+## Responsive Runtime Notes
+
+The runtime owns viewport fitting, keyboard navigation, vertical touch swipe
+navigation, slide progress placement, and generic responsive behavior for core
+layout primitives such as `dk-grid`, `dk-stack`, and `dk-table`.
+
+Themes own design tokens: colors, typography sizes, spacing, surfaces, shadows,
+and their compact/tablet/mobile token values. The current implementation uses
+plain CSS variables, media queries, container queries, and Pointer Events. No
+responsive helper SDK is used.
+
+Desktop viewports keep the default 16:9 slide stage. Tablet and iPad viewports
+adapt the stage closer to the device: 4:3 in landscape and 3:4 in portrait. Small
+portrait phones switch to a 9:16 stage so text-heavy slides remain inspectable
+without adding a mobile editor mode.
 
 ## Current DSL Scope
 
