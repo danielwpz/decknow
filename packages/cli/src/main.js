@@ -13,6 +13,12 @@ const commentOverlayPath = path.join(workspaceRoot, "packages/cli/client/comment
 const defaultCommentsDir = ".decknow-runs/comments";
 const defaultDevPort = 4317;
 const devPortFallbackLimit = 50;
+const runtimeSrcPattern =
+  /(?:packages\/runtime-standard\/decknow\.js(?:\?[^"']*)?|\/__decknow__\/runtime\.js(?:\?[^"']*)?)/i;
+const runtimeScriptTagPattern =
+  /<script\b[^>]*\bsrc=["'][^"']*(?:packages\/runtime-standard\/decknow\.js(?:\?[^"']*)?|\/__decknow__\/runtime\.js(?:\?[^"']*)?)[^"']*["'][^>]*>\s*<\/script>/i;
+const commentOverlayScriptTagPattern =
+  /\n?\s*<script\b[^>]*\bsrc=["']\/__decknow__\/comments\.js["'][^>]*>\s*<\/script>\s*/gi;
 
 function resolveEntry(entry) {
   const resolved = path.resolve(process.cwd(), entry);
@@ -93,6 +99,49 @@ export function injectCommentOverlay(html) {
     return html.replace(/<\/body\s*>/i, `${script}  </body>`);
   }
   return `${html}${script}`;
+}
+
+export function buildSingleHtml(entryFile, options = {}) {
+  const html = fs.readFileSync(entryFile, "utf8");
+  if (!hasDecknowRuntimeScript(html)) {
+    throw new Error(
+      'Deck does not include the Decknow runtime. Add a runtime script before building, for example: <script src="../packages/runtime-standard/decknow.js"></script>.'
+    );
+  }
+
+  const runtime = fs.readFileSync(runtimePath, "utf8").replace(/<\/script/gi, "<\\/script");
+  const htmlWithoutDevOverlay = html.replace(commentOverlayScriptTagPattern, "\n");
+  const outputHtml = /<script\b[^>]*\bdata-decknow-runtime\b/i.test(htmlWithoutDevOverlay)
+    ? htmlWithoutDevOverlay
+    : htmlWithoutDevOverlay.replace(
+        runtimeScriptTagPattern,
+        `<script data-decknow-runtime>\n${runtime}\n</script>`
+      );
+
+  if (
+    outputHtml === htmlWithoutDevOverlay &&
+    !/<script\b[^>]*\bdata-decknow-runtime\b/i.test(outputHtml)
+  ) {
+    throw new Error("Unable to replace the runtime script while building the deck.");
+  }
+
+  const outputFile = options.out
+    ? path.resolve(process.cwd(), options.out)
+    : path.resolve(
+        process.cwd(),
+        ".decknow-runs/build",
+        `${path.basename(entryFile, path.extname(entryFile))}.html`
+      );
+  fs.mkdirSync(path.dirname(outputFile), { recursive: true });
+  fs.writeFileSync(outputFile, outputHtml);
+
+  return {
+    ok: true,
+    entry: entryFile,
+    out: outputFile,
+    bytes: Buffer.byteLength(outputHtml),
+    runtimeBytes: Buffer.byteLength(runtime),
+  };
 }
 
 async function handleCommentApi(req, res, context) {
@@ -326,11 +375,8 @@ export function validateHtml(entryFile) {
     }
   }
 
-  if (
-    /<script\b(?![^>]*src=["'][^"']*(?:packages\/runtime-standard\/decknow\.js(?:\?[^"']*)?|\/__decknow__\/runtime\.js(?:\?[^"']*)?)["'])/i.test(
-      html
-    )
-  ) {
+  const scriptTags = [...html.matchAll(/<script\b[^>]*>/gi)].map((match) => match[0]);
+  if (scriptTags.some((tag) => !isDecknowRuntimeScriptTag(tag))) {
     warnings.push(
       'Raw <script> detected. This is allowed as an escape hatch, but prefer dk-raw reason="...".'
     );
@@ -358,16 +404,20 @@ function countMatches(text, pattern) {
 
 function ensureRuntimeScript(entryFile) {
   const html = fs.readFileSync(entryFile, "utf8");
-  if (
-    /packages\/runtime-standard\/decknow\.js(?:\?[^"']*)?|\/__decknow__\/runtime\.js(?:\?[^"']*)?/.test(
-      html
-    )
-  ) {
+  if (hasDecknowRuntimeScript(html)) {
     return;
   }
   throw new Error(
     'Deck does not include the Decknow runtime. For local source files, add: <script src="../packages/runtime-standard/decknow.js"></script>.'
   );
+}
+
+function hasDecknowRuntimeScript(html) {
+  return /<script\b[^>]*\bdata-decknow-runtime\b/i.test(html) || runtimeSrcPattern.test(html);
+}
+
+function isDecknowRuntimeScriptTag(tag) {
+  return /\bdata-decknow-runtime\b/i.test(tag) || runtimeSrcPattern.test(tag);
 }
 
 export function entryUrl(port, entry) {
@@ -422,6 +472,11 @@ async function runValidate(argv) {
     for (const error of result.errors) console.error(`Error: ${error}`);
   }
   if (!result.ok) process.exitCode = 1;
+}
+
+async function runBuild(argv) {
+  const entry = resolveEntry(argv.entry);
+  console.log(JSON.stringify(buildSingleHtml(entry, { out: argv.out }), null, 2));
 }
 
 async function loadChromium() {
@@ -802,6 +857,21 @@ export async function runCli(argv = process.argv) {
           .example("decknow validate deck.html", "Validate a deck")
           .example("decknow validate deck.html --json", "Print machine-readable output"),
       runValidate
+    )
+    .command(
+      "build <entry>",
+      "Build a self-contained single HTML deck for presentation.",
+      (y) =>
+        y
+          .positional("entry", { type: "string", describe: "HTML deck entry file" })
+          .option("out", {
+            alias: "o",
+            type: "string",
+            describe: "Output HTML file. Defaults to .decknow-runs/build/<entry>.html",
+          })
+          .example("decknow build deck.html", "Build a single self-contained HTML file")
+          .example("decknow build deck.html --out dist/deck.html", "Build to a specific file"),
+      runBuild
     )
     .command(
       "screenshot <entry>",

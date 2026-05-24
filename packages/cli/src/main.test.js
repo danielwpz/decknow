@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  buildSingleHtml,
   injectCommentOverlay,
   parseViewport,
   readCommentRound,
@@ -77,6 +78,57 @@ describe("cli core", () => {
     expect(injected).toContain('<script src="/__decknow__/comments.js"></script>');
     expect(injected).toContain("</body>");
     expect(injectCommentOverlay(injected)).toBe(injected);
+  });
+
+  it("builds a self-contained HTML deck with the runtime inlined", () => {
+    const input = writeTempFile(
+      "deck.html",
+      `<!doctype html>
+      <html>
+        <head>
+          <script src="../packages/runtime-standard/decknow.js?v=test"></script>
+          <script src="/__decknow__/comments.js"></script>
+        </head>
+        <body>
+          <dk-deck><dk-slide><dk-title>Build me</dk-title></dk-slide></dk-deck>
+        </body>
+      </html>`
+    );
+    const output = path.join(makeTempDir(), "deck-built.html");
+
+    const result = buildSingleHtml(input, { out: output });
+    const html = fs.readFileSync(output, "utf8");
+
+    expect(result).toMatchObject({ ok: true, out: output });
+    expect(result.bytes).toBeGreaterThan(result.runtimeBytes);
+    expect(html).toContain("<script data-decknow-runtime>");
+    expect(html).toContain("window.__DECKNOW_DEBUG_TEXT__");
+    expect(html).not.toContain("packages/runtime-standard/decknow.js");
+    expect(html).not.toContain("/__decknow__/comments.js");
+    expect(validateHtml(output).warnings.some((warning) => warning.includes("Raw <script>"))).toBe(
+      false
+    );
+  });
+
+  it("can build an already self-contained HTML deck again", () => {
+    const input = writeTempFile(
+      "deck.html",
+      `<!doctype html>
+      <html>
+        <head><script src="../packages/runtime-standard/decknow.js"></script></head>
+        <body><dk-deck><dk-slide><dk-title>Build twice</dk-title></dk-slide></dk-deck></body>
+      </html>`
+    );
+    const firstOutput = path.join(makeTempDir(), "deck-built.html");
+    const secondOutput = path.join(makeTempDir(), "deck-built-again.html");
+
+    buildSingleHtml(input, { out: firstOutput });
+    const result = buildSingleHtml(firstOutput, { out: secondOutput });
+    const html = fs.readFileSync(secondOutput, "utf8");
+
+    expect(result).toMatchObject({ ok: true, out: secondOutput });
+    expect(html.match(/data-decknow-runtime/g)).toHaveLength(1);
+    expect(html).not.toContain("packages/runtime-standard/decknow.js");
   });
 
   it("stores comment rounds with stable numeric ids and latest lookup", () => {

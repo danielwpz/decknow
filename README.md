@@ -46,9 +46,20 @@ Print CLI help:
 
 ```bash
 pnpm exec decknow --help
+pnpm exec decknow build --help
 pnpm exec decknow inspect --help
 pnpm exec decknow comments --help
 ```
+
+Build the current example deck into a self-contained single HTML file:
+
+```bash
+pnpm exec decknow build examples/project-overview.html --out .decknow-runs/build/project-overview.single.html
+```
+
+The build command inlines the current runtime into the output HTML and removes
+the development comment overlay. The result is intended for static presentation
+checks and can be opened directly from the filesystem.
 
 Capture the first slide:
 
