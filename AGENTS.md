@@ -25,6 +25,7 @@ the deck genuinely needs an escape hatch.
 packages/runtime-standard   Browser runtime and built-in plugins
 packages/schema             Element manifest and schema checks
 packages/cli                dev server, validate, screenshot, inspect, comments
+plugins                     Repo-local plugin packages bundled by the runtime
 docs                        Design notes and workflow docs
 examples                    Public example decks only
 scripts                     Build and precommit helpers
@@ -33,6 +34,8 @@ scripts                     Build and precommit helpers
 `packages/runtime-standard/src/` is the source for the runtime. The generated
 browser bundle is `packages/runtime-standard/decknow.js`. If runtime source
 changes, run `pnpm build:runtime` and commit the bundle when it changes.
+Built-in plugins live as workspace packages under `plugins/*`; the standard
+runtime imports them as dependencies and bundles them into the generated runtime.
 
 Private or local decks belong under ignored runtime directories such as
 `.decknow-runs/private/`, not under `examples/`.
@@ -105,6 +108,9 @@ pnpm precommit
 - Treat the default theme as a built-in plugin. Theme-specific tokens and visual
   defaults belong in the theme plugin, while runtime core styles should stay
   structural.
+- Keep bundled plugins in `plugins/*` workspace packages. Do not put plugin
+  source back under `packages/runtime-standard/src/`; the runtime should compose
+  plugin packages rather than own their implementation.
 - When adding or changing DSL attributes, update the schema manifest and tests.
 - When changing runtime source, update the generated runtime bundle.
 - When changing CLI behavior, add CLI/client tests where practical.
@@ -139,6 +145,7 @@ Avoid encoding layout as fragile pixel instructions:
 Core attributes should describe reusable presentation intent:
 
 - layout: `layout`, `columns`, `gap`, `align`, `valign`
+- width: `width`, `content-width`
 - semantics: `level`, `ordered`, `marker`, `tone`
 - component behavior: `direction`, `density`, `emphasis`, `surface`
 

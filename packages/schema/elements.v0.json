@@ -9,6 +9,7 @@
     "tone": ["default", "muted", "accent", "strong", "success", "warning", "danger"],
     "surface": ["auto", "none", "solid", "glass"],
     "density": ["low", "medium", "high"],
+    "width": ["auto", "prose", "wide", "full"],
     "class": "string",
     "style": "string"
   },
@@ -30,7 +31,8 @@
         "layout": ["default", "hero", "center", "grid", "split"],
         "align": ["left", "center", "right"],
         "surface": ["auto", "none", "solid"],
-        "density": ["low", "medium", "high"]
+        "density": ["low", "medium", "high"],
+        "content-width": ["auto", "prose", "wide", "full"]
       },
       "children": [
         "dk-title",
@@ -69,7 +71,8 @@
         "span": "integer 1-6",
         "align": ["left", "center", "right", "start", "end"],
         "surface": ["auto", "none", "solid", "glass"],
-        "valign": ["top", "center", "bottom", "stretch"]
+        "valign": ["top", "center", "bottom", "stretch"],
+        "content-width": ["auto", "prose", "wide", "full"]
       },
       "children": ["flow", "dk-flow", "dk-pyramid"]
     },
@@ -80,7 +83,8 @@
         "gap": ["none", "sm", "md", "lg"],
         "align": ["left", "center", "right", "start", "end", "stretch"],
         "valign": ["top", "center", "bottom", "stretch"],
-        "responsive": ["auto", "none"]
+        "responsive": ["auto", "none"],
+        "content-width": ["auto", "prose", "wide", "full"]
       },
       "children": ["flow", "dk-flow", "dk-pyramid"]
     },

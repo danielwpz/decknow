@@ -1,252 +1,5 @@
 (() => {
-  // packages/runtime-standard/src/plugin-registry.js
-  var PLUGIN_NAME_PATTERN = /^[a-z0-9][a-z0-9-:.]*$/;
-  var ELEMENT_PREFIX_PATTERN = /^[a-z0-9][a-z0-9-]*-$/;
-  var RESERVED_META_KEYS = /* @__PURE__ */ new Set(["builtin", "official", "trusted"]);
-  function createPluginRegistry(environment = {}, options = {}) {
-    const env = resolveEnvironment(environment);
-    const officialPluginNames = new Set(options.officialPluginNames || []);
-    const officialElementPrefix = options.officialElementPrefix || "dk-";
-    const plugins = /* @__PURE__ */ new Map();
-    const elementOwners = /* @__PURE__ */ new Map();
-    const selectableSelectors = /* @__PURE__ */ new Set();
-    const themeOwners = /* @__PURE__ */ new Map();
-    function registerPlugin(plugin) {
-      const record = normalizePlugin(plugin, { trusted: false });
-      assertCanRegister(record);
-      assertPublicPluginPolicy(record);
-      return applyRegistration(record);
-    }
-    function registerBuiltInPlugin(plugin) {
-      const record = normalizePlugin(plugin, { trusted: true });
-      if (!officialPluginNames.has(record.name)) {
-        throw new Error(`Built-in Decknow plugin "${record.name}" is not in the official allowlist.`);
-      }
-      assertCanRegister(record);
-      return applyRegistration(record);
-    }
-    function applyRegistration(record) {
-      for (const [name, klass] of Object.entries(record.elements)) {
-        registerElement(name, klass, record.name);
-      }
-      for (const selector of record.selectable) {
-        selectableSelectors.add(selector);
-      }
-      for (const theme of record.themes) {
-        if (themeOwners.has(theme)) {
-          throw new Error(
-            `Decknow theme "${theme}" is already provided by plugin "${themeOwners.get(theme)}".`
-          );
-        }
-        themeOwners.set(theme, record.name);
-      }
-      const styleIds = injectPluginStyles(record);
-      record.styleIds = styleIds;
-      plugins.set(record.name, record);
-      return pluginSummary(record);
-    }
-    function assertCanRegister(record) {
-      if (plugins.has(record.name)) {
-        throw new Error(`Decknow plugin "${record.name}" is already registered.`);
-      }
-      for (const [name, klass] of Object.entries(record.elements)) {
-        if (!name.includes("-")) {
-          throw new Error(
-            `Custom element "${name}" from plugin "${record.name}" must include a hyphen.`
-          );
-        }
-        if (typeof klass !== "function") {
-          throw new Error(
-            `Custom element "${name}" from plugin "${record.name}" must be a constructor.`
-          );
-        }
-        if (elementOwners.has(name)) {
-          throw new Error(
-            `Custom element "${name}" is already registered by plugin "${elementOwners.get(name)}".`
-          );
-        }
-        if (env.customElements?.get(name)) {
-          throw new Error(`Custom element "${name}" is already defined outside Decknow plugins.`);
-        }
-      }
-      for (const theme of record.themes) {
-        if (themeOwners.has(theme)) {
-          throw new Error(
-            `Decknow theme "${theme}" is already provided by plugin "${themeOwners.get(theme)}".`
-          );
-        }
-      }
-    }
-    function assertPublicPluginPolicy(record) {
-      const elementNames = Object.keys(record.elements);
-      if (!elementNames.length) return;
-      if (!record.elementPrefix) {
-        throw new Error(`Plugin "${record.name}" must declare elementPrefix for public elements.`);
-      }
-      if (!ELEMENT_PREFIX_PATTERN.test(record.elementPrefix)) {
-        throw new Error(
-          `Plugin "${record.name}" has invalid elementPrefix "${record.elementPrefix}". It must be a lowercase custom-element prefix ending with "-".`
-        );
-      }
-      if (record.elementPrefix === officialElementPrefix) {
-        throw new Error(
-          `Plugin "${record.name}" cannot use reserved Decknow element prefix "${officialElementPrefix}".`
-        );
-      }
-      for (const name of elementNames) {
-        if (name.startsWith(officialElementPrefix)) {
-          throw new Error(
-            `Plugin "${record.name}" cannot register official Decknow element "${name}".`
-          );
-        }
-        if (!name.startsWith(record.elementPrefix)) {
-          throw new Error(
-            `Plugin "${record.name}" element "${name}" must use declared prefix "${record.elementPrefix}".`
-          );
-        }
-      }
-    }
-    function registerElement(name, klass, pluginName) {
-      env.customElements?.define(name, klass);
-      elementOwners.set(name, pluginName);
-    }
-    function injectPluginStyles(record) {
-      if (!record.styles.length || !env.document) return [];
-      const ids = [];
-      const host = env.document.head || env.document.documentElement;
-      for (const styleEntry of record.styles) {
-        const id = pluginStyleId(record.name, styleEntry.id);
-        ids.push(id);
-        if (env.document.getElementById(id)) continue;
-        const style = env.document.createElement("style");
-        style.id = id;
-        style.dataset.dkPlugin = record.name;
-        style.textContent = styleEntry.css;
-        host.appendChild(style);
-      }
-      return ids;
-    }
-    function getPlugin(name) {
-      const record = plugins.get(name);
-      return record ? pluginSummary(record) : null;
-    }
-    function getPlugins() {
-      return Array.from(plugins.values(), pluginSummary);
-    }
-    function getSelectableSelectors() {
-      return Array.from(selectableSelectors);
-    }
-    function getElementNames() {
-      return Array.from(elementOwners.keys());
-    }
-    function getThemeNames() {
-      return Array.from(themeOwners.keys());
-    }
-    function getManifest() {
-      return {
-        plugins: getPlugins(),
-        elements: getElementNames(),
-        selectable: getSelectableSelectors(),
-        themes: getThemeNames()
-      };
-    }
-    return {
-      registerPlugin,
-      registerBuiltInPlugin,
-      getPlugin,
-      getPlugins,
-      getSelectableSelectors,
-      getElementNames,
-      getThemeNames,
-      getManifest
-    };
-  }
-  function normalizePlugin(plugin, options = {}) {
-    if (!plugin || typeof plugin !== "object") {
-      throw new Error("Decknow plugin must be an object.");
-    }
-    if (!plugin.name || typeof plugin.name !== "string") {
-      throw new Error("Decknow plugin requires a string name.");
-    }
-    if (!PLUGIN_NAME_PATTERN.test(plugin.name)) {
-      throw new Error(
-        `Decknow plugin name "${plugin.name}" must use lowercase letters, numbers, hyphens, colons, or dots.`
-      );
-    }
-    const elements = normalizeElements(plugin.elements);
-    return {
-      name: plugin.name,
-      version: plugin.version || "0.0.0",
-      kind: plugin.kind || "component",
-      trusted: Boolean(options.trusted),
-      elementPrefix: plugin.elementPrefix || null,
-      elements,
-      selectable: normalizeStringList(plugin.selectable, Object.keys(elements)),
-      themes: normalizeStringList(plugin.themes, []),
-      styles: normalizeStyles(plugin.styles),
-      schema: plugin.schema || null,
-      meta: sanitizeMeta(plugin.meta)
-    };
-  }
-  function normalizeElements(elements = {}) {
-    if (Array.isArray(elements)) {
-      return Object.fromEntries(elements);
-    }
-    if (!elements || typeof elements !== "object") return {};
-    return { ...elements };
-  }
-  function normalizeStyles(styles) {
-    if (!styles) return [];
-    const entries = Array.isArray(styles) ? styles : [styles];
-    return entries.map((entry, index) => {
-      if (typeof entry === "string")
-        return { id: index === 0 ? "default" : String(index), css: entry };
-      if (!entry || typeof entry !== "object") return null;
-      return {
-        id: entry.id || (index === 0 ? "default" : String(index)),
-        css: String(entry.css || "")
-      };
-    }).filter((entry) => entry?.css);
-  }
-  function normalizeStringList(value, fallback) {
-    if (value === void 0 || value === null) return [...fallback];
-    if (Array.isArray(value)) return value.map(String).filter(Boolean);
-    if (typeof value === "object") return Object.keys(value);
-    return [String(value)].filter(Boolean);
-  }
-  function sanitizeMeta(meta) {
-    if (!meta || typeof meta !== "object" || Array.isArray(meta)) return {};
-    return Object.fromEntries(Object.entries(meta).filter(([key]) => !RESERVED_META_KEYS.has(key)));
-  }
-  function pluginSummary(record) {
-    return {
-      name: record.name,
-      version: record.version,
-      kind: record.kind,
-      trusted: record.trusted,
-      elementPrefix: record.elementPrefix,
-      elements: Object.keys(record.elements),
-      selectable: [...record.selectable],
-      themes: [...record.themes],
-      styleIds: [...record.styleIds || []],
-      schema: record.schema,
-      meta: record.meta
-    };
-  }
-  function pluginStyleId(pluginName, styleId) {
-    return `decknow-plugin-${safeId(pluginName)}-${safeId(styleId || "default")}-styles`;
-  }
-  function safeId(value) {
-    return String(value).replace(/[^a-zA-Z0-9_-]/g, "-");
-  }
-  function resolveEnvironment(environment) {
-    return {
-      document: environment.document || globalThis.document,
-      customElements: environment.customElements || globalThis.customElements
-    };
-  }
-
-  // packages/runtime-standard/src/plugins/diagram-basic/flow.js
+  // plugins/diagram-basic/src/flow.js
   var DKFlow = class extends HTMLElement {
     static get observedAttributes() {
       return ["direction", "responsive"];
@@ -585,7 +338,7 @@
   }
 `;
 
-  // packages/runtime-standard/src/plugins/diagram-basic/pyramid.js
+  // plugins/diagram-basic/src/pyramid.js
   var DKPyramid = class extends HTMLElement {
     static get observedAttributes() {
       return ["label-placement", "tip-ratio"];
@@ -902,7 +655,7 @@
   }
 `;
 
-  // packages/runtime-standard/src/plugins/diagram-basic/index.js
+  // plugins/diagram-basic/src/index.js
   function createDiagramBasicPlugin(version) {
     return {
       name: "diagram-basic",
@@ -937,7 +690,7 @@
     };
   }
 
-  // packages/runtime-standard/src/plugins/theme-terminal-green/index.js
+  // plugins/theme-terminal-green/src/index.js
   var terminalGreenThemeStyles = `
   :root,
   dk-deck,
@@ -1050,6 +803,253 @@
         id: "tokens",
         css: terminalGreenThemeStyles
       }
+    };
+  }
+
+  // packages/runtime-standard/src/plugin-registry.js
+  var PLUGIN_NAME_PATTERN = /^[a-z0-9][a-z0-9-:.]*$/;
+  var ELEMENT_PREFIX_PATTERN = /^[a-z0-9][a-z0-9-]*-$/;
+  var RESERVED_META_KEYS = /* @__PURE__ */ new Set(["builtin", "official", "trusted"]);
+  function createPluginRegistry(environment = {}, options = {}) {
+    const env = resolveEnvironment(environment);
+    const officialPluginNames = new Set(options.officialPluginNames || []);
+    const officialElementPrefix = options.officialElementPrefix || "dk-";
+    const plugins = /* @__PURE__ */ new Map();
+    const elementOwners = /* @__PURE__ */ new Map();
+    const selectableSelectors = /* @__PURE__ */ new Set();
+    const themeOwners = /* @__PURE__ */ new Map();
+    function registerPlugin(plugin) {
+      const record = normalizePlugin(plugin, { trusted: false });
+      assertCanRegister(record);
+      assertPublicPluginPolicy(record);
+      return applyRegistration(record);
+    }
+    function registerBuiltInPlugin(plugin) {
+      const record = normalizePlugin(plugin, { trusted: true });
+      if (!officialPluginNames.has(record.name)) {
+        throw new Error(`Built-in Decknow plugin "${record.name}" is not in the official allowlist.`);
+      }
+      assertCanRegister(record);
+      return applyRegistration(record);
+    }
+    function applyRegistration(record) {
+      for (const [name, klass] of Object.entries(record.elements)) {
+        registerElement(name, klass, record.name);
+      }
+      for (const selector of record.selectable) {
+        selectableSelectors.add(selector);
+      }
+      for (const theme of record.themes) {
+        if (themeOwners.has(theme)) {
+          throw new Error(
+            `Decknow theme "${theme}" is already provided by plugin "${themeOwners.get(theme)}".`
+          );
+        }
+        themeOwners.set(theme, record.name);
+      }
+      const styleIds = injectPluginStyles(record);
+      record.styleIds = styleIds;
+      plugins.set(record.name, record);
+      return pluginSummary(record);
+    }
+    function assertCanRegister(record) {
+      if (plugins.has(record.name)) {
+        throw new Error(`Decknow plugin "${record.name}" is already registered.`);
+      }
+      for (const [name, klass] of Object.entries(record.elements)) {
+        if (!name.includes("-")) {
+          throw new Error(
+            `Custom element "${name}" from plugin "${record.name}" must include a hyphen.`
+          );
+        }
+        if (typeof klass !== "function") {
+          throw new Error(
+            `Custom element "${name}" from plugin "${record.name}" must be a constructor.`
+          );
+        }
+        if (elementOwners.has(name)) {
+          throw new Error(
+            `Custom element "${name}" is already registered by plugin "${elementOwners.get(name)}".`
+          );
+        }
+        if (env.customElements?.get(name)) {
+          throw new Error(`Custom element "${name}" is already defined outside Decknow plugins.`);
+        }
+      }
+      for (const theme of record.themes) {
+        if (themeOwners.has(theme)) {
+          throw new Error(
+            `Decknow theme "${theme}" is already provided by plugin "${themeOwners.get(theme)}".`
+          );
+        }
+      }
+    }
+    function assertPublicPluginPolicy(record) {
+      const elementNames = Object.keys(record.elements);
+      if (!elementNames.length) return;
+      if (!record.elementPrefix) {
+        throw new Error(`Plugin "${record.name}" must declare elementPrefix for public elements.`);
+      }
+      if (!ELEMENT_PREFIX_PATTERN.test(record.elementPrefix)) {
+        throw new Error(
+          `Plugin "${record.name}" has invalid elementPrefix "${record.elementPrefix}". It must be a lowercase custom-element prefix ending with "-".`
+        );
+      }
+      if (record.elementPrefix === officialElementPrefix) {
+        throw new Error(
+          `Plugin "${record.name}" cannot use reserved Decknow element prefix "${officialElementPrefix}".`
+        );
+      }
+      for (const name of elementNames) {
+        if (name.startsWith(officialElementPrefix)) {
+          throw new Error(
+            `Plugin "${record.name}" cannot register official Decknow element "${name}".`
+          );
+        }
+        if (!name.startsWith(record.elementPrefix)) {
+          throw new Error(
+            `Plugin "${record.name}" element "${name}" must use declared prefix "${record.elementPrefix}".`
+          );
+        }
+      }
+    }
+    function registerElement(name, klass, pluginName) {
+      env.customElements?.define(name, klass);
+      elementOwners.set(name, pluginName);
+    }
+    function injectPluginStyles(record) {
+      if (!record.styles.length || !env.document) return [];
+      const ids = [];
+      const host = env.document.head || env.document.documentElement;
+      for (const styleEntry of record.styles) {
+        const id = pluginStyleId(record.name, styleEntry.id);
+        ids.push(id);
+        if (env.document.getElementById(id)) continue;
+        const style = env.document.createElement("style");
+        style.id = id;
+        style.dataset.dkPlugin = record.name;
+        style.textContent = styleEntry.css;
+        host.appendChild(style);
+      }
+      return ids;
+    }
+    function getPlugin(name) {
+      const record = plugins.get(name);
+      return record ? pluginSummary(record) : null;
+    }
+    function getPlugins() {
+      return Array.from(plugins.values(), pluginSummary);
+    }
+    function getSelectableSelectors() {
+      return Array.from(selectableSelectors);
+    }
+    function getElementNames() {
+      return Array.from(elementOwners.keys());
+    }
+    function getThemeNames() {
+      return Array.from(themeOwners.keys());
+    }
+    function getManifest() {
+      return {
+        plugins: getPlugins(),
+        elements: getElementNames(),
+        selectable: getSelectableSelectors(),
+        themes: getThemeNames()
+      };
+    }
+    return {
+      registerPlugin,
+      registerBuiltInPlugin,
+      getPlugin,
+      getPlugins,
+      getSelectableSelectors,
+      getElementNames,
+      getThemeNames,
+      getManifest
+    };
+  }
+  function normalizePlugin(plugin, options = {}) {
+    if (!plugin || typeof plugin !== "object") {
+      throw new Error("Decknow plugin must be an object.");
+    }
+    if (!plugin.name || typeof plugin.name !== "string") {
+      throw new Error("Decknow plugin requires a string name.");
+    }
+    if (!PLUGIN_NAME_PATTERN.test(plugin.name)) {
+      throw new Error(
+        `Decknow plugin name "${plugin.name}" must use lowercase letters, numbers, hyphens, colons, or dots.`
+      );
+    }
+    const elements = normalizeElements(plugin.elements);
+    return {
+      name: plugin.name,
+      version: plugin.version || "0.0.0",
+      kind: plugin.kind || "component",
+      trusted: Boolean(options.trusted),
+      elementPrefix: plugin.elementPrefix || null,
+      elements,
+      selectable: normalizeStringList(plugin.selectable, Object.keys(elements)),
+      themes: normalizeStringList(plugin.themes, []),
+      styles: normalizeStyles(plugin.styles),
+      schema: plugin.schema || null,
+      meta: sanitizeMeta(plugin.meta)
+    };
+  }
+  function normalizeElements(elements = {}) {
+    if (Array.isArray(elements)) {
+      return Object.fromEntries(elements);
+    }
+    if (!elements || typeof elements !== "object") return {};
+    return { ...elements };
+  }
+  function normalizeStyles(styles) {
+    if (!styles) return [];
+    const entries = Array.isArray(styles) ? styles : [styles];
+    return entries.map((entry, index) => {
+      if (typeof entry === "string")
+        return { id: index === 0 ? "default" : String(index), css: entry };
+      if (!entry || typeof entry !== "object") return null;
+      return {
+        id: entry.id || (index === 0 ? "default" : String(index)),
+        css: String(entry.css || "")
+      };
+    }).filter((entry) => entry?.css);
+  }
+  function normalizeStringList(value, fallback) {
+    if (value === void 0 || value === null) return [...fallback];
+    if (Array.isArray(value)) return value.map(String).filter(Boolean);
+    if (typeof value === "object") return Object.keys(value);
+    return [String(value)].filter(Boolean);
+  }
+  function sanitizeMeta(meta) {
+    if (!meta || typeof meta !== "object" || Array.isArray(meta)) return {};
+    return Object.fromEntries(Object.entries(meta).filter(([key]) => !RESERVED_META_KEYS.has(key)));
+  }
+  function pluginSummary(record) {
+    return {
+      name: record.name,
+      version: record.version,
+      kind: record.kind,
+      trusted: record.trusted,
+      elementPrefix: record.elementPrefix,
+      elements: Object.keys(record.elements),
+      selectable: [...record.selectable],
+      themes: [...record.themes],
+      styleIds: [...record.styleIds || []],
+      schema: record.schema,
+      meta: record.meta
+    };
+  }
+  function pluginStyleId(pluginName, styleId) {
+    return `decknow-plugin-${safeId(pluginName)}-${safeId(styleId || "default")}-styles`;
+  }
+  function safeId(value) {
+    return String(value).replace(/[^a-zA-Z0-9_-]/g, "-");
+  }
+  function resolveEnvironment(environment) {
+    return {
+      document: environment.document || globalThis.document,
+      customElements: environment.customElements || globalThis.customElements
     };
   }
 
@@ -1336,7 +1336,244 @@
     dk-raw {
       position: relative;
       z-index: 1;
-      max-width: min(100%, 1120px);
+      --dk-auto-width: min(100%, 1120px);
+      max-width: var(--dk-width, var(--dk-auto-width));
+    }
+
+    dk-slide[content-width="auto"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-region[content-width="auto"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-stack[content-width="auto"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    )[width="auto"] {
+      --dk-width: var(--dk-auto-width);
+    }
+
+    dk-slide[content-width="prose"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-region[content-width="prose"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-stack[content-width="prose"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    )[width="prose"] {
+      --dk-width: min(100%, 68ch);
+    }
+
+    dk-slide[content-width="wide"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-region[content-width="wide"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-stack[content-width="wide"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    )[width="wide"] {
+      --dk-width: min(100%, 1320px);
+    }
+
+    dk-slide[content-width="full"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-region[content-width="full"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-stack[content-width="full"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    )[width="full"] {
+      --dk-width: 100%;
     }
 
     dk-slide[align="center"],
@@ -1367,7 +1604,7 @@
 
     dk-title {
       display: block;
-      max-width: 15ch;
+      --dk-auto-width: 15ch;
       font-family: var(--dk-font-display);
       font-size: var(--dk-title-size);
       line-height: 0.96;
@@ -1386,7 +1623,7 @@
 
     dk-subtitle {
       display: block;
-      max-width: 56ch;
+      --dk-auto-width: 56ch;
       color: var(--dk-muted);
       font-size: var(--dk-subtitle-size);
       line-height: 1.34;
@@ -1420,7 +1657,7 @@
 
     dk-text {
       display: block;
-      max-width: 68ch;
+      --dk-auto-width: 68ch;
       font-size: var(--dk-text-size);
       line-height: 1.48;
       color: var(--dk-slide-ink);
@@ -1671,9 +1908,10 @@
       --dk-grid-columns: 2;
       --dk-grid-rows: auto;
       --dk-region-span: 1;
+      --dk-auto-width: 100%;
       display: grid;
       width: 100%;
-      max-width: 100%;
+      max-width: var(--dk-width, var(--dk-auto-width));
       min-height: 0;
       --dk-grid-layout-columns: var(--dk-grid-columns);
       grid-template-columns: repeat(var(--dk-grid-layout-columns), minmax(0, 1fr));
@@ -2615,6 +2853,7 @@
     "dk-stack",
     "dk-raw"
   ];
+  pluginRegistry.registerBuiltInPlugin(createTerminalGreenThemePlugin(DECKNOW_VERSION));
   pluginRegistry.registerBuiltInPlugin({
     name: "core",
     version: DECKNOW_VERSION,
@@ -2626,7 +2865,6 @@
       css: coreRuntimeStyles
     }
   });
-  pluginRegistry.registerBuiltInPlugin(createTerminalGreenThemePlugin(DECKNOW_VERSION));
   pluginRegistry.registerBuiltInPlugin(createDiagramBasicPlugin(DECKNOW_VERSION));
   function plainElementClass() {
     return class extends HTMLElement {

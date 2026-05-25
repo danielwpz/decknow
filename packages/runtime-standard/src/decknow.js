@@ -1,6 +1,6 @@
+import { createDiagramBasicPlugin } from "@decknow/plugin-diagram-basic";
+import { createTerminalGreenThemePlugin } from "@decknow/plugin-theme-terminal-green";
 import { createPluginRegistry } from "./plugin-registry.js";
-import { createDiagramBasicPlugin } from "./plugins/diagram-basic/index.js";
-import { createTerminalGreenThemePlugin } from "./plugins/theme-terminal-green/index.js";
 
 const DECKNOW_VERSION = "0.0.1";
 const RUNTIME_KEY = "__DECKNOW__";
@@ -302,7 +302,244 @@ const coreRuntimeStyles = `
     dk-raw {
       position: relative;
       z-index: 1;
-      max-width: min(100%, 1120px);
+      --dk-auto-width: min(100%, 1120px);
+      max-width: var(--dk-width, var(--dk-auto-width));
+    }
+
+    dk-slide[content-width="auto"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-region[content-width="auto"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-stack[content-width="auto"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    )[width="auto"] {
+      --dk-width: var(--dk-auto-width);
+    }
+
+    dk-slide[content-width="prose"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-region[content-width="prose"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-stack[content-width="prose"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    )[width="prose"] {
+      --dk-width: min(100%, 68ch);
+    }
+
+    dk-slide[content-width="wide"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-region[content-width="wide"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-stack[content-width="wide"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    )[width="wide"] {
+      --dk-width: min(100%, 1320px);
+    }
+
+    dk-slide[content-width="full"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-region[content-width="full"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    dk-stack[content-width="full"] > :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    ),
+    :is(
+      dk-title,
+      dk-subtitle,
+      dk-heading,
+      dk-text,
+      dk-list,
+      dk-code,
+      dk-quote,
+      dk-table,
+      dk-grid,
+      dk-region,
+      dk-stack,
+      dk-raw
+    )[width="full"] {
+      --dk-width: 100%;
     }
 
     dk-slide[align="center"],
@@ -333,7 +570,7 @@ const coreRuntimeStyles = `
 
     dk-title {
       display: block;
-      max-width: 15ch;
+      --dk-auto-width: 15ch;
       font-family: var(--dk-font-display);
       font-size: var(--dk-title-size);
       line-height: 0.96;
@@ -352,7 +589,7 @@ const coreRuntimeStyles = `
 
     dk-subtitle {
       display: block;
-      max-width: 56ch;
+      --dk-auto-width: 56ch;
       color: var(--dk-muted);
       font-size: var(--dk-subtitle-size);
       line-height: 1.34;
@@ -386,7 +623,7 @@ const coreRuntimeStyles = `
 
     dk-text {
       display: block;
-      max-width: 68ch;
+      --dk-auto-width: 68ch;
       font-size: var(--dk-text-size);
       line-height: 1.48;
       color: var(--dk-slide-ink);
@@ -637,9 +874,10 @@ const coreRuntimeStyles = `
       --dk-grid-columns: 2;
       --dk-grid-rows: auto;
       --dk-region-span: 1;
+      --dk-auto-width: 100%;
       display: grid;
       width: 100%;
-      max-width: 100%;
+      max-width: var(--dk-width, var(--dk-auto-width));
       min-height: 0;
       --dk-grid-layout-columns: var(--dk-grid-columns);
       grid-template-columns: repeat(var(--dk-grid-layout-columns), minmax(0, 1fr));
@@ -1678,6 +1916,8 @@ const coreSelectableElements = [
   "dk-raw",
 ];
 
+pluginRegistry.registerBuiltInPlugin(createTerminalGreenThemePlugin(DECKNOW_VERSION));
+
 pluginRegistry.registerBuiltInPlugin({
   name: "core",
   version: DECKNOW_VERSION,
@@ -1689,8 +1929,6 @@ pluginRegistry.registerBuiltInPlugin({
     css: coreRuntimeStyles,
   },
 });
-
-pluginRegistry.registerBuiltInPlugin(createTerminalGreenThemePlugin(DECKNOW_VERSION));
 
 pluginRegistry.registerBuiltInPlugin(createDiagramBasicPlugin(DECKNOW_VERSION));
 

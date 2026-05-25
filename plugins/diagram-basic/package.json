@@ -1,0 +1,12 @@
+{
+  "name": "@decknow/plugin-diagram-basic",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Built-in semantic diagram templates for Decknow decks.",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ]
+}

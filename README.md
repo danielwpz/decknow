@@ -114,6 +114,8 @@ pnpm test
 packages/runtime-standard   Browser runtime for the current HTML DSL
 packages/schema             First-pass schema and element manifest
 packages/cli                Local dev/validate/screenshot/inspect/comments CLI
+plugins/theme-terminal-green Built-in default theme plugin
+plugins/diagram-basic       Built-in semantic diagram plugin
 examples/basic.html         First example deck
 ```
 
@@ -122,11 +124,11 @@ The runtime source lives in `packages/runtime-standard/src/` and is built into
 documented in `docs/plugin-system.md`.
 
 The current default theme is `terminal-green`, provided by the built-in
-`theme:terminal-green` plugin. It is bundled into `packages/runtime-standard` for
-the first local-development version so a deck still only needs one runtime
-script. Its visual direction follows the current `frontend-slides` default style:
-black stage, monospace typography, green primary accents, orange contrast
-accents, and code-review style translucent surfaces.
+`theme:terminal-green` workspace plugin. Built-in plugins live under `plugins/*`
+and are bundled into `packages/runtime-standard/decknow.js`, so a deck still only
+needs one runtime script. Its visual direction follows the current
+`frontend-slides` default style: black stage, monospace typography, green primary
+accents, orange contrast accents, and code-review style translucent surfaces.
 
 ## Responsive Runtime Notes
 
@@ -169,6 +171,14 @@ Core layout primitives are included because simple layout control is not a plugi
 - `dk-region`
 - `dk-stack`
 - alignment attributes
+- width attributes: `width="auto|prose|wide|full"` on content elements and
+  `content-width="auto|prose|wide|full"` on `dk-slide`, `dk-region`, or
+  `dk-stack`
+
+`auto` keeps each element's semantic default width: body text stays readable,
+grids fill the available area, and tables use the standard content width.
+Use `full` when a structural element such as a table should use the full slide
+content area.
 
 `dk-raw` exists as an explicit escape hatch for raw HTML/CSS/JS when the core DSL is insufficient.
 

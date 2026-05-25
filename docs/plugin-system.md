@@ -118,6 +118,12 @@ These are still bundled into the standard runtime. The important boundary is
 that built-ins now use the same registry surface that future first-party and
 community plugins will use.
 
+Built-in component and theme plugins live as repo-local workspace packages under
+`plugins/*`. `packages/runtime-standard` imports those packages and
+`pnpm build:runtime` bundles them into `packages/runtime-standard/decknow.js`.
+That keeps authoring simple: normal decks only include the standard runtime
+script, and single-file builds inline that bundled runtime.
+
 Runtime core styles should stay structural: viewport fitting, element display
 defaults, layout mechanics, navigation affordances, and generic state selectors.
 Theme plugins own the visual defaults that make a deck look like a specific
@@ -131,6 +137,7 @@ The first plugin foundation does not yet include:
 
 - Network or npm package plugin discovery.
 - CLI plugin installation.
+- External plugin script bundling for dev/build.
 - Dependency/version negotiation.
 - Schema merge and validation across plugin manifests.
 - Separate production bundling for optional plugin packs.

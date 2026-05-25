@@ -22,6 +22,7 @@
         "layout": { "enum": ["default", "hero", "center", "grid", "split"] },
         "align": { "enum": ["left", "center", "right"] },
         "surface": { "enum": ["auto", "none", "solid"] },
+        "contentWidth": { "enum": ["auto", "prose", "wide", "full"] },
         "content": {
           "type": "array",
           "items": { "$ref": "#/$defs/node" }
@@ -50,6 +51,7 @@
         },
         "text": { "type": "string" },
         "align": { "enum": ["left", "center", "right", "start", "end"] },
+        "width": { "enum": ["auto", "prose", "wide", "full"] },
         "responsive": { "enum": ["auto", "none"] },
         "phoneColumns": {
           "type": "integer",

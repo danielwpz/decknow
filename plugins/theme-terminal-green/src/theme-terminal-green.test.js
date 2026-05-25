@@ -1,6 +1,6 @@
 import { Window } from "happy-dom";
 import { describe, expect, it } from "vitest";
-import { createPluginRegistry } from "../../plugin-registry.js";
+import { createPluginRegistry } from "../../../packages/runtime-standard/src/plugin-registry.js";
 import { createTerminalGreenThemePlugin } from "./index.js";
 
 function createTestEnvironment() {

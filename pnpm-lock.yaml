@@ -39,9 +39,20 @@ importers:
         specifier: ^17.7.2
         version: 17.7.2
 
-  packages/runtime-standard: {}
+  packages/runtime-standard:
+    dependencies:
+      '@decknow/plugin-diagram-basic':
+        specifier: workspace:*
+        version: link:../../plugins/diagram-basic
+      '@decknow/plugin-theme-terminal-green':
+        specifier: workspace:*
+        version: link:../../plugins/theme-terminal-green
 
   packages/schema: {}
+
+  plugins/diagram-basic: {}
+
+  plugins/theme-terminal-green: {}
 
 packages:
 

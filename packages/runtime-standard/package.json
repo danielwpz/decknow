@@ -10,5 +10,9 @@
   "files": [
     "decknow.js",
     "src"
-  ]
+  ],
+  "dependencies": {
+    "@decknow/plugin-diagram-basic": "workspace:*",
+    "@decknow/plugin-theme-terminal-green": "workspace:*"
+  }
 }

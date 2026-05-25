@@ -163,7 +163,7 @@ describe("diagram-basic plugin", () => {
 
 async function loadModules() {
   const [{ createPluginRegistry }, { createDiagramBasicPlugin }] = await Promise.all([
-    import("../../plugin-registry.js"),
+    import("../../../packages/runtime-standard/src/plugin-registry.js"),
     import("./index.js"),
   ]);
   return { createPluginRegistry, createDiagramBasicPlugin };

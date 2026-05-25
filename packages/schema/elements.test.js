@@ -71,4 +71,13 @@ describe("element schema manifest", () => {
       },
     });
   });
+
+  it("documents declarative width controls", () => {
+    expect(manifest.globalAttributes.width).toEqual(["auto", "prose", "wide", "full"]);
+    for (const elementName of ["dk-slide", "dk-region", "dk-stack"]) {
+      expect(manifest.elements[elementName].attributes).toMatchObject({
+        "content-width": ["auto", "prose", "wide", "full"],
+      });
+    }
+  });
 });
