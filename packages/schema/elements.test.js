@@ -25,6 +25,7 @@ describe("element schema manifest", () => {
       },
       children: ["dk-flow-step"],
     });
+    expect(manifest.elements["dk-flow-step"].children).toEqual(["flow"]);
     expect(manifest.elements["dk-pyramid"]).toMatchObject({
       attributes: {
         fit: ["auto", "fill"],
@@ -56,5 +57,18 @@ describe("element schema manifest", () => {
         /^dk-[a-z0-9]+(?:-[a-z0-9]+)*$/
       );
     }
+  });
+
+  it("documents semantic list marker variants", () => {
+    expect(manifest.elements["dk-list"]).toMatchObject({
+      attributes: {
+        marker: ["auto", "status", "none"],
+      },
+    });
+    expect(manifest.elements["dk-item"]).toMatchObject({
+      attributes: {
+        tone: expect.arrayContaining(["success", "warning", "danger"]),
+      },
+    });
   });
 });

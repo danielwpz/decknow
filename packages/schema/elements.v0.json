@@ -100,7 +100,8 @@
       "attributes": {
         "tone": ["default", "muted", "accent", "strong"],
         "emphasis": "boolean"
-      }
+      },
+      "children": ["flow"]
     },
     "dk-pyramid": {
       "description": "Built-in diagram template for layered hierarchy. AI provides ordered levels; runtime owns sizing and responsive layout.",
@@ -152,12 +153,16 @@
       "description": "Ordered or unordered list.",
       "attributes": {
         "ordered": "boolean",
+        "marker": ["auto", "status", "none"],
         "reveal": "boolean"
       },
       "children": ["dk-item"]
     },
     "dk-item": {
-      "description": "List item."
+      "description": "List item.",
+      "attributes": {
+        "tone": ["default", "muted", "accent", "strong", "success", "warning", "danger"]
+      }
     },
     "dk-code": {
       "description": "Code block or inline code.",

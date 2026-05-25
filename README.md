@@ -158,6 +158,11 @@ The first schema covers Markdown-like basics:
 - `dk-link`
 - `dk-table` / `dk-row` / `dk-cell`
 
+`dk-list` supports semantic marker variants for common presentation patterns:
+use `marker="status"` with `dk-item tone="success"` / `tone="danger"` for
+check/cross capability lists, and `marker="none"` when a list should not display
+the default terminal marker.
+
 Core layout primitives are included because simple layout control is not a plugin concern:
 
 - `dk-grid`

@@ -74,6 +74,31 @@ describe("diagram-basic plugin", () => {
     expect(flow.dataset.dkOrientation).toBe("horizontal");
   });
 
+  it("allows rich Decknow content inside flow steps", async () => {
+    const env = installDom();
+    const { createPluginRegistry, createDiagramBasicPlugin } = await loadModules();
+    const registry = createPluginRegistry(env, {
+      officialPluginNames: ["diagram-basic"],
+    });
+    registry.registerBuiltInPlugin(createDiagramBasicPlugin("test"));
+
+    const flow = env.document.createElement("dk-flow");
+    flow.innerHTML = `
+      <dk-flow-step>
+        <dk-heading level="3">Title</dk-heading>
+        <dk-text>Body copy</dk-text>
+      </dk-flow-step>
+    `;
+    env.document.body.appendChild(flow);
+
+    const step = flow.querySelector("dk-flow-step");
+    const label = step.querySelector(".dk-flow-step-label");
+    expect(step.dataset.dkRichContent).toBe("true");
+    expect(label.tagName.toLowerCase()).toBe("div");
+    expect(label.querySelector("dk-heading")?.textContent).toBe("Title");
+    expect(label.querySelector("dk-text")?.textContent).toBe("Body copy");
+  });
+
   it("keeps pyramid geometry aligned and only falls back long labels per level", async () => {
     const env = installDom();
     installTextMeasurement(env, 10);

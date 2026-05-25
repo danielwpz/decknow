@@ -87,7 +87,7 @@ export const flowSchema = {
 function ensureFlowStepLabel(step) {
   let label = step.querySelector(":scope > .dk-flow-step-label");
   if (!label) {
-    label = document.createElement("span");
+    label = document.createElement("div");
     label.className = "dk-flow-step-label";
     step.appendChild(label);
   }
@@ -96,6 +96,16 @@ function ensureFlowStepLabel(step) {
     if (child === label) continue;
     label.appendChild(child);
   }
+
+  step.dataset.dkRichContent = hasFlowStepRichContent(label) ? "true" : "false";
+}
+
+function hasFlowStepRichContent(label) {
+  return Boolean(
+    label.querySelector(
+      ":scope > dk-heading, :scope > dk-text, :scope > dk-list, :scope > dk-table, :scope > dk-grid, :scope > dk-region, :scope > dk-stack, :scope > dk-quote, :scope > dk-flow, :scope > dk-pyramid"
+    )
+  );
 }
 
 function measureFlowStepWidth(step) {
@@ -166,8 +176,36 @@ export const flowStyles = `
   }
 
   .dk-flow-step-label {
+    display: block;
+    flex: 1 1 auto;
     min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  dk-flow[data-dk-orientation="horizontal"] dk-flow-step:not([data-dk-rich-content="true"]) .dk-flow-step-label {
     white-space: nowrap;
+  }
+
+  dk-flow-step dk-heading,
+  dk-flow-step dk-text {
+    max-width: 100%;
+  }
+
+  dk-flow-step dk-heading {
+    font-size: var(--dk-heading-4-size);
+    line-height: 1.12;
+  }
+
+  dk-flow-step dk-heading::before {
+    content: none;
+  }
+
+  dk-flow-step dk-text {
+    margin-top: clamp(4px, 0.7cqw, 8px);
+    color: var(--dk-muted);
+    font-size: 0.84em;
+    line-height: 1.3;
   }
 
   dk-flow-step::before {
