@@ -51,7 +51,10 @@
     root.innerHTML = `
       <div class="dk-comment-highlight" data-kind="hover"></div>
       <div class="dk-comment-highlight" data-kind="selected"></div>
-      <button class="dk-comment-toggle" type="button" aria-label="Open comment mode">C</button>
+      <button class="dk-comment-toggle" type="button" aria-label="Open comment mode">
+        <span class="dk-comment-toggle__mark">C</span>
+        <span class="dk-comment-toggle__label">Comment</span>
+      </button>
       <section class="dk-comment-panel" hidden>
         <div class="dk-comment-panel__header">
           <strong>Comment target</strong>
@@ -64,7 +67,10 @@
         </div>
       </section>
       <section class="dk-comment-round" hidden>
-        <span class="dk-comment-count">0 comments in this round</span>
+        <div class="dk-comment-round__copy">
+          <strong>Submit saved comments</strong>
+          <span class="dk-comment-count">0 comments in this round</span>
+        </div>
         <button class="dk-comment-submit" type="button">Submit round</button>
         <button class="dk-comment-exit" type="button">Exit</button>
       </section>
@@ -118,6 +124,7 @@
       "click",
       (event) => {
         if (!state.active || ui.root.contains(event.target)) return;
+        if (state.selectedTarget) return;
         const target = targetFromPoint(event.clientX, event.clientY);
         if (!target) return;
         event.preventDefault();
@@ -145,9 +152,10 @@
   function enterCommentMode(ui) {
     state.active = true;
     document.body.dataset.dkCommentMode = "true";
-    ui.toggle.textContent = "X";
+    setToggleMode(ui, true);
     ui.toggle.setAttribute("aria-label", "Exit comment mode");
     ui.round.hidden = false;
+    releaseOverlayFocus(ui);
     toast(ui, "Comment mode opened. Click an element to comment.");
     if (!state.hasReportedModeOpened) {
       state.hasReportedModeOpened = true;
@@ -163,10 +171,11 @@
     state.hoverTarget = null;
     clearSelection(ui);
     document.body.removeAttribute("data-dk-comment-mode");
-    ui.toggle.textContent = "C";
+    setToggleMode(ui, false);
     ui.toggle.setAttribute("aria-label", "Open comment mode");
     ui.hover.hidden = true;
-    if (!state.comments.length) ui.round.hidden = true;
+    ui.round.hidden = true;
+    releaseOverlayFocus(ui);
   }
 
   function selectTarget(ui, target) {
@@ -187,6 +196,7 @@
     ui.panel.hidden = true;
     ui.target.textContent = "";
     ui.textarea.value = "";
+    releaseOverlayFocus(ui);
   }
 
   function saveCurrentComment(ui) {
@@ -213,6 +223,7 @@
       return;
     }
 
+    const submittedCount = state.comments.length;
     const payload = {
       deck: window.__DECKNOW__?.screenshotState?.() || null,
       viewport: viewportInfo(),
@@ -224,12 +235,31 @@
     updateCount(ui);
     clearSelection(ui);
     ui.round.hidden = true;
-    toast(ui, `Comment round ${result.round} submitted.`);
+    releaseOverlayFocus(ui);
+    toast(
+      ui,
+      `Submitted ${submittedCount} new ${submittedCount === 1 ? "comment" : "comments"} (round ${result.round}).`
+    );
   }
 
   function updateCount(ui) {
     const count = state.comments.length;
-    ui.count.textContent = `${count} ${count === 1 ? "comment" : "comments"} in this round`;
+    ui.round.dataset.dkHasComments = count ? "true" : "false";
+    ui.count.textContent = count
+      ? `${count} saved ${count === 1 ? "comment" : "comments"} ready to submit`
+      : "No saved comments yet";
+  }
+
+  function setToggleMode(ui, active) {
+    ui.toggle.dataset.dkActive = active ? "true" : "false";
+    ui.toggle.querySelector(".dk-comment-toggle__mark").textContent = active ? "X" : "C";
+    ui.toggle.querySelector(".dk-comment-toggle__label").textContent = active ? "Close" : "Comment";
+  }
+
+  function releaseOverlayFocus(ui) {
+    if (ui.root.contains(document.activeElement)) {
+      document.activeElement.blur?.();
+    }
   }
 
   function targetFromPoint(x, y) {
@@ -452,15 +482,54 @@
         position: fixed;
         right: 18px;
         bottom: 18px;
-        width: 42px;
-        height: 42px;
-        border: 1px solid rgba(57, 211, 83, 0.38);
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 118px;
+        height: 46px;
+        padding: 0 14px 0 9px;
+        border: 1px solid rgba(57, 211, 83, 0.58);
         border-radius: 999px;
-        background: rgba(1, 4, 9, 0.86);
+        background:
+          linear-gradient(135deg, rgba(57, 211, 83, 0.22), rgba(1, 4, 9, 0.94) 58%),
+          rgba(1, 4, 9, 0.92);
         color: #d9ffe9;
-        font: 700 15px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
-        box-shadow: 0 16px 44px rgba(0, 0, 0, 0.36);
+        font: 700 13px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        box-shadow:
+          0 0 0 1px rgba(1, 4, 9, 0.86),
+          0 16px 44px rgba(0, 0, 0, 0.38),
+          0 0 24px rgba(57, 211, 83, 0.18);
         cursor: pointer;
+      }
+
+      .dk-comment-toggle__mark {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        background: #39d353;
+        color: #06150a;
+        font: 850 14px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+        box-shadow: 0 0 18px rgba(57, 211, 83, 0.28);
+      }
+
+      .dk-comment-toggle__label {
+        letter-spacing: 0;
+        white-space: nowrap;
+      }
+
+      .dk-comment-toggle[data-dk-active="true"] {
+        border-color: rgba(255, 143, 61, 0.6);
+        background:
+          linear-gradient(135deg, rgba(255, 143, 61, 0.2), rgba(1, 4, 9, 0.94) 58%),
+          rgba(1, 4, 9, 0.92);
+      }
+
+      .dk-comment-toggle[data-dk-active="true"] .dk-comment-toggle__mark {
+        background: #ff8f3d;
+        box-shadow: 0 0 18px rgba(255, 143, 61, 0.28);
       }
 
       .dk-comment-highlight {
@@ -489,6 +558,7 @@
         position: fixed;
         right: 18px;
         bottom: 76px;
+        z-index: 4;
         width: min(380px, calc(100vw - 36px));
         display: grid;
         gap: 10px;
@@ -508,8 +578,7 @@
       }
 
       .dk-comment-panel__header,
-      .dk-comment-panel__actions,
-      .dk-comment-round {
+      .dk-comment-panel__actions {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -540,6 +609,7 @@
 
       .dk-comment-panel button,
       .dk-comment-round button {
+        flex: 0 0 auto;
         border: 1px solid rgba(139, 148, 158, 0.28);
         border-radius: 6px;
         background: rgba(13, 17, 23, 0.86);
@@ -563,13 +633,53 @@
         left: 50%;
         bottom: 18px;
         transform: translateX(-50%);
-        padding: 10px 12px;
-        border: 1px solid rgba(139, 148, 158, 0.24);
-        border-radius: 999px;
-        background: rgba(1, 4, 9, 0.9);
+        z-index: 3;
+        width: min(540px, calc(100vw - 36px));
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid rgba(57, 211, 83, 0.34);
+        border-radius: 10px;
+        background:
+          linear-gradient(135deg, rgba(57, 211, 83, 0.14), rgba(1, 4, 9, 0.95) 44%),
+          rgba(1, 4, 9, 0.94);
         color: #f0f6fc;
-        box-shadow: 0 16px 44px rgba(0, 0, 0, 0.34);
+        box-shadow:
+          0 0 0 1px rgba(1, 4, 9, 0.9),
+          0 18px 56px rgba(0, 0, 0, 0.4),
+          0 0 28px rgba(57, 211, 83, 0.12);
         font-size: 12px;
+      }
+
+      .dk-comment-round__copy {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+
+      .dk-comment-round__copy strong {
+        color: #d9ffe9;
+        font-size: 13px;
+        line-height: 1.1;
+      }
+
+      .dk-comment-count {
+        color: #8b949e;
+        line-height: 1.2;
+      }
+
+      .dk-comment-submit {
+        padding: 10px 12px !important;
+        background: rgba(57, 211, 83, 0.16) !important;
+        box-shadow: inset 0 0 0 1px rgba(57, 211, 83, 0.1);
+      }
+
+      .dk-comment-round[data-dk-has-comments="true"] .dk-comment-submit {
+        background: #39d353 !important;
+        border-color: #39d353 !important;
+        color: #06150a !important;
       }
 
       .dk-comment-toast {
@@ -577,6 +687,7 @@
         left: 50%;
         top: 18px;
         transform: translateX(-50%);
+        z-index: 5;
         max-width: min(520px, calc(100vw - 36px));
         padding: 10px 12px;
         border: 1px solid rgba(57, 211, 83, 0.28);

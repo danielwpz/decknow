@@ -18,7 +18,7 @@ dependency.
 ## User Flow
 
 1. The user opens the dev server URL.
-2. A small floating comment button appears in the lower-right corner.
+2. A floating Comment button appears in the lower-right corner.
 3. Clicking the button opens comment mode.
 4. Hovering over semantic `dk-*` elements shows a highlight.
 5. Clicking a highlighted element locks the selection and opens a comment panel.
@@ -29,6 +29,10 @@ dependency.
 
 Hover only previews a target. Click locks the target. Moving the pointer after a
 target is locked must not change the comment target.
+
+While a target is locked, normal page clicks are passed through so users can
+select and copy rendered text without accidentally changing the comment target.
+Saving or canceling the current comment returns to target selection.
 
 The user can cancel the current selection with the panel cancel button or the
 Escape key. If no element is selected, Escape exits comment mode.
