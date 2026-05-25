@@ -32,6 +32,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@decknow/runtime-standard':
+        specifier: workspace:*
+        version: link:../runtime-standard
       playwright:
         specifier: ^1.52.0
         version: 1.60.0

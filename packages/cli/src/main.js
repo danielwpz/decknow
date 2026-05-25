@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import http from "node:http";
+import { createRequire } from "node:module";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -7,18 +8,27 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
 const workspaceRoot = path.resolve(__dirname, "../../..");
-const runtimePath = path.join(workspaceRoot, "packages/runtime-standard/decknow.js");
+const cliPackageRoot = path.resolve(__dirname, "..");
+const runtimePath = resolveRuntimePath();
 const commentOverlayPath = path.join(workspaceRoot, "packages/cli/client/comment-overlay.js");
 const defaultCommentsDir = ".decknow-runs/comments";
 const defaultDevPort = 4317;
 const devPortFallbackLimit = 50;
+const decknowPackagePrefix = "@decknow/";
 const runtimeSrcPattern =
   /(?:packages\/runtime-standard\/decknow\.js(?:\?[^"']*)?|\/__decknow__\/runtime\.js(?:\?[^"']*)?)/i;
 const runtimeScriptTagPattern =
   /<script\b[^>]*\bsrc=["'][^"']*(?:packages\/runtime-standard\/decknow\.js(?:\?[^"']*)?|\/__decknow__\/runtime\.js(?:\?[^"']*)?)[^"']*["'][^>]*>\s*<\/script>/i;
 const commentOverlayScriptTagPattern =
   /\n?\s*<script\b[^>]*\bsrc=["']\/__decknow__\/comments\.js["'][^>]*>\s*<\/script>\s*/gi;
+
+function resolveRuntimePath() {
+  const sourceRuntimePath = path.join(workspaceRoot, "packages/runtime-standard/decknow.js");
+  if (fs.existsSync(sourceRuntimePath)) return sourceRuntimePath;
+  return require.resolve("@decknow/runtime-standard/decknow.js");
+}
 
 function resolveEntry(entry) {
   const resolved = path.resolve(process.cwd(), entry);
@@ -142,6 +152,133 @@ export function buildSingleHtml(entryFile, options = {}) {
     bytes: Buffer.byteLength(outputHtml),
     runtimeBytes: Buffer.byteLength(runtime),
   };
+}
+
+export function discoverSkills(options = {}) {
+  const startRoot = path.resolve(options.startRoot || cliPackageRoot);
+  const queue = [startRoot];
+  const visited = new Set();
+  const skills = [];
+
+  while (queue.length > 0) {
+    const packageRoot = queue.shift();
+    if (visited.has(packageRoot)) continue;
+    visited.add(packageRoot);
+
+    const packageJson = readPackageJson(packageRoot);
+    skills.push(...normalizeSkillDeclarations(packageJson, packageRoot));
+
+    for (const dependencyName of decknowDependencyNames(packageJson)) {
+      const dependencyRoot = resolvePackageRoot(dependencyName, packageRoot);
+      if (!visited.has(dependencyRoot)) queue.push(dependencyRoot);
+    }
+  }
+
+  return skills.sort((left, right) => left.name.localeCompare(right.name));
+}
+
+export function installSkills(options = {}) {
+  const targetRoot = path.resolve(process.cwd(), options.dir || "skills");
+  const skills = discoverSkills();
+
+  if (skills.length === 0) {
+    throw new Error("No Decknow skills were discovered from installed packages.");
+  }
+
+  const installed = skills.map((skill) => {
+    if (!fs.existsSync(path.join(skill.source, "SKILL.md"))) {
+      throw new Error(`Skill "${skill.name}" is missing SKILL.md at ${skill.source}.`);
+    }
+
+    const target = path.join(targetRoot, skill.name);
+    copyDirectory(skill.source, target);
+    return {
+      name: skill.name,
+      package: skill.package,
+      source: skill.source,
+      target,
+    };
+  });
+
+  return {
+    ok: true,
+    targetRoot,
+    skills: installed,
+  };
+}
+
+function readPackageJson(packageRoot) {
+  const packageJsonPath = path.join(packageRoot, "package.json");
+  if (!fs.existsSync(packageJsonPath)) {
+    throw new Error(`Missing package.json at ${packageRoot}.`);
+  }
+  return JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+}
+
+function normalizeSkillDeclarations(packageJson, packageRoot) {
+  const declarations = packageJson.decknow?.skills || [];
+  if (!Array.isArray(declarations)) {
+    throw new Error(`Package ${packageJson.name || packageRoot} has invalid decknow.skills.`);
+  }
+
+  return declarations.map((declaration) => {
+    if (!declaration?.path) {
+      throw new Error(
+        `Package ${packageJson.name || packageRoot} declares a skill without a path.`
+      );
+    }
+
+    const source = path.resolve(packageRoot, declaration.path);
+    if (!isPathInside(source, packageRoot)) {
+      throw new Error(
+        `Package ${packageJson.name || packageRoot} declares a skill outside the package root.`
+      );
+    }
+
+    return {
+      name: declaration.name || path.basename(source),
+      package: packageJson.name || null,
+      source,
+    };
+  });
+}
+
+function decknowDependencyNames(packageJson) {
+  return Object.keys({
+    ...(packageJson.dependencies || {}),
+    ...(packageJson.optionalDependencies || {}),
+  }).filter((dependencyName) => dependencyName.startsWith(decknowPackagePrefix));
+}
+
+function resolvePackageRoot(packageName, fromPackageRoot) {
+  const fromRequire = createRequire(path.join(fromPackageRoot, "package.json"));
+  const entryPath = fromRequire.resolve(packageName);
+  return findPackageRoot(entryPath);
+}
+
+function findPackageRoot(startPath) {
+  let current = fs.statSync(startPath).isDirectory() ? startPath : path.dirname(startPath);
+  while (current !== path.dirname(current)) {
+    if (fs.existsSync(path.join(current, "package.json"))) return current;
+    current = path.dirname(current);
+  }
+  throw new Error(`Unable to find package root for ${startPath}.`);
+}
+
+function copyDirectory(source, target) {
+  fs.rmSync(target, { force: true, recursive: true });
+  fs.mkdirSync(target, { recursive: true });
+
+  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
+    const sourcePath = path.join(source, entry.name);
+    const targetPath = path.join(target, entry.name);
+
+    if (entry.isDirectory()) {
+      copyDirectory(sourcePath, targetPath);
+    } else if (entry.isFile()) {
+      fs.copyFileSync(sourcePath, targetPath);
+    }
+  }
 }
 
 async function handleCommentApi(req, res, context) {
@@ -477,6 +614,18 @@ async function runValidate(argv) {
 async function runBuild(argv) {
   const entry = resolveEntry(argv.entry);
   console.log(JSON.stringify(buildSingleHtml(entry, { out: argv.out }), null, 2));
+}
+
+async function runSkills(argv) {
+  if (argv.action !== "install") {
+    throw new Error(`Unknown skills action: ${argv.action}`);
+  }
+
+  const result = installSkills({ dir: argv.dir });
+  console.log(`Installed Decknow skills to ${result.targetRoot}`);
+  for (const skill of result.skills) {
+    console.log(`- ${skill.name} (${skill.package})`);
+  }
 }
 
 async function loadChromium() {
@@ -872,6 +1021,25 @@ export async function runCli(argv = process.argv) {
           .example("decknow build deck.html", "Build a single self-contained HTML file")
           .example("decknow build deck.html --out dist/deck.html", "Build to a specific file"),
       runBuild
+    )
+    .command(
+      "skills <action>",
+      "Install Decknow AI-agent skills into the current project.",
+      (y) =>
+        y
+          .positional("action", {
+            type: "string",
+            choices: ["install"],
+            describe: "Skill action",
+          })
+          .option("dir", {
+            type: "string",
+            default: "skills",
+            describe: "Target directory. Defaults to ./skills",
+          })
+          .example("decknow skills install", "Install bundled skills into ./skills")
+          .example("decknow skills install --dir .agent/skills", "Install into a custom directory"),
+      runSkills
     )
     .command(
       "screenshot <entry>",

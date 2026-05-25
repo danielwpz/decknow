@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.15.0",
+  "license": "MIT",
   "scripts": {
     "build:runtime": "node scripts/build-runtime.mjs",
     "dev": "node packages/cli/bin/decknow.js dev examples/basic.html",

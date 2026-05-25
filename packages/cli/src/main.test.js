@@ -4,7 +4,9 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   buildSingleHtml,
+  discoverSkills,
   injectCommentOverlay,
+  installSkills,
   parseViewport,
   readCommentRound,
   readCommentsIndex,
@@ -165,6 +167,28 @@ describe("cli core", () => {
     expect(readCommentRound(storeRoot, 1).comments[0].text).toBe("First comment");
     expect(readLatestCommentRound(storeRoot).comments).toHaveLength(2);
     expect(() => readCommentRound(storeRoot, 3)).toThrow(/was not found/);
+  });
+
+  it("discovers and installs package-declared skills", () => {
+    const targetRoot = path.join(makeTempDir(), "skills");
+
+    const discoveredSkillNames = discoverSkills().map((skill) => skill.name);
+    const result = installSkills({ dir: targetRoot });
+
+    expect(discoveredSkillNames).toEqual([
+      "decknow",
+      "decknow-plugin-diagram-basic",
+      "decknow-theme-terminal-green",
+    ]);
+    expect(result.skills.map((skill) => skill.name)).toEqual(discoveredSkillNames);
+
+    for (const skillName of discoveredSkillNames) {
+      expect(fs.existsSync(path.join(targetRoot, skillName, "SKILL.md"))).toBe(true);
+    }
+
+    expect(
+      fs.readFileSync(path.join(targetRoot, "decknow-plugin-diagram-basic", "SKILL.md"), "utf8")
+    ).toContain("dk-flow");
   });
 });
 

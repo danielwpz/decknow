@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "type": "module",
   "description": "Initial Decknow DSL schemas and element manifest.",
+  "license": "MIT",
   "exports": {
     "./elements": "./elements.v0.json",
     "./ast": "./decknow.v0.schema.json"

@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "type": "module",
   "description": "Batteries-included browser runtime for Decknow AI-native HTML slides.",
+  "license": "MIT",
   "exports": {
     ".": "./decknow.js",
     "./decknow.js": "./decknow.js"

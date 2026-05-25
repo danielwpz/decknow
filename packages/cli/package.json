@@ -3,15 +3,26 @@
   "version": "0.0.1",
   "type": "module",
   "description": "CLI for previewing, validating, inspecting, and commenting on Decknow decks.",
+  "license": "MIT",
   "bin": {
     "decknow": "./bin/decknow.js"
   },
   "files": [
     "bin",
-    "client",
-    "src"
+    "client/comment-overlay.js",
+    "src/main.js",
+    "skills"
   ],
+  "decknow": {
+    "skills": [
+      {
+        "name": "decknow",
+        "path": "skills/decknow"
+      }
+    ]
+  },
   "dependencies": {
+    "@decknow/runtime-standard": "workspace:*",
     "yargs": "^17.7.2"
   },
   "peerDependencies": {

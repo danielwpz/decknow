@@ -3,10 +3,20 @@
   "version": "0.0.1",
   "type": "module",
   "description": "Built-in terminal-green theme plugin for Decknow decks.",
+  "license": "MIT",
   "exports": {
     ".": "./src/index.js"
   },
   "files": [
-    "src"
-  ]
+    "src/index.js",
+    "skills"
+  ],
+  "decknow": {
+    "skills": [
+      {
+        "name": "decknow-theme-terminal-green",
+        "path": "skills/decknow-theme-terminal-green"
+      }
+    ]
+  }
 }

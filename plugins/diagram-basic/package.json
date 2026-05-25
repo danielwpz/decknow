@@ -3,10 +3,22 @@
   "version": "0.0.1",
   "type": "module",
   "description": "Built-in semantic diagram templates for Decknow decks.",
+  "license": "MIT",
   "exports": {
     ".": "./src/index.js"
   },
   "files": [
-    "src"
-  ]
+    "src/flow.js",
+    "src/index.js",
+    "src/pyramid.js",
+    "skills"
+  ],
+  "decknow": {
+    "skills": [
+      {
+        "name": "decknow-plugin-diagram-basic",
+        "path": "skills/decknow-plugin-diagram-basic"
+      }
+    ]
+  }
 }

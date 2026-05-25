@@ -1,0 +1,7 @@
+interface:
+  display_name: "Decknow"
+  short_description: "Create agent-editable HTML slide decks"
+  brand_color: "#39D353"
+  default_prompt: "Use $decknow to create or edit a semantic HTML slide deck."
+policy:
+  allow_implicit_invocation: true

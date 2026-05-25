@@ -1,196 +1,34 @@
 # Decknow
 
-Early local development workspace for an AI-native HTML slides runtime.
+Decknow is an AI-native slide deck runtime.
 
-This README only documents what exists in this repository today. Distribution,
-hosting, CDN, package names, and installer choices are intentionally not specified yet.
+It turns presentations into semantic HTML that coding agents can write, diff,
+validate, inspect, comment on, and build into a single shareable file.
 
-## Local Development
+## Why Decknow
 
-Install dependencies:
+Slide decks are usually visual artifacts. That makes them painful for AI agents
+to edit reliably.
+
+Decknow treats a deck as source code:
+
+- semantic `dk-*` elements instead of pixel-positioned shapes
+- browser preview with point-and-comment feedback for human review
+- layout inspection commands for agent-side verification
+- built-in responsive runtime for desktop and portrait viewports
+- single-file HTML builds for easy sharing
+- repo-local plugin packages for themes and components
+
+## Copy This
+
+Install the agent skills into your project:
 
 ```bash
-pnpm install
+pnpm exec decknow skills install
 ```
 
-Preview the current example deck:
-
-```bash
-pnpm dev
-```
-
-`decknow dev` starts a local development server. In development it injects a
-comment overlay and accepts local comment submissions so an AI agent can read
-them later. The deck rendering itself is still HTML-backed.
-
-The dev server starts on `127.0.0.1:4317` by default. If that port is already in
-use, it tries the next ports in sequence and prints the actual URL.
-
-The example HTML files also work when opened directly from the filesystem in a
-presentation-like static mode because they use a relative runtime script:
+Then give this to your AI coding agent:
 
 ```txt
-examples/project-overview.html
-examples/basic.html
+Read `./skills/decknow/SKILL.md` and follow it. Use Decknow to create or edit my slide deck as semantic `dk-*` HTML, validate and inspect it with `pnpm exec decknow`, process browser comments when present, and build a single self-contained HTML file when ready.
 ```
-
-Direct file opening does not include the development comment overlay.
-
-Validate the current example deck:
-
-```bash
-pnpm validate
-```
-
-Print CLI help:
-
-```bash
-pnpm exec decknow --help
-pnpm exec decknow build --help
-pnpm exec decknow inspect --help
-pnpm exec decknow comments --help
-```
-
-Build the current example deck into a self-contained single HTML file:
-
-```bash
-pnpm exec decknow build examples/project-overview.html --out .decknow-runs/build/project-overview.single.html
-```
-
-The build command inlines the current runtime into the output HTML and removes
-the development comment overlay. The result is intended for static presentation
-checks and can be opened directly from the filesystem.
-
-Capture the first slide:
-
-```bash
-pnpm screenshot
-```
-
-Inspect rendered layout metrics for a slide:
-
-```bash
-pnpm inspect
-```
-
-The inspect command prints JSON for the active slide, including element boxes,
-selected computed styles, slide-relative margins, overflow flags, and basic
-diagnostics. It is intended for agent/debug workflows where screenshots are not
-precise enough:
-
-```bash
-pnpm exec decknow inspect examples/project-overview.html -s 4 -q "dk-grid" -v 1440x900
-```
-
-Use `--summary` when the full computed-style payload is too noisy:
-
-```bash
-pnpm exec decknow inspect examples/project-overview.html -s 4 -q "dk-grid" -v 1440x900 -m
-```
-
-Read the latest submitted development comment round:
-
-```bash
-pnpm comments
-pnpm exec decknow comments list
-pnpm exec decknow comments show 1
-```
-
-Build the single-file browser runtime from the modular source:
-
-```bash
-pnpm build:runtime
-```
-
-Run unit tests:
-
-```bash
-pnpm test
-```
-
-## Current Packages
-
-```txt
-packages/runtime-standard   Browser runtime for the current HTML DSL
-packages/schema             First-pass schema and element manifest
-packages/cli                Local dev/validate/screenshot/inspect/comments CLI
-plugins/theme-terminal-green Built-in default theme plugin
-plugins/diagram-basic       Built-in semantic diagram plugin
-examples/basic.html         First example deck
-```
-
-The runtime source lives in `packages/runtime-standard/src/` and is built into
-`packages/runtime-standard/decknow.js`. The current plugin foundation is
-documented in `docs/plugin-system.md`.
-
-The current default theme is `terminal-green`, provided by the built-in
-`theme:terminal-green` workspace plugin. Built-in plugins live under `plugins/*`
-and are bundled into `packages/runtime-standard/decknow.js`, so a deck still only
-needs one runtime script. Its visual direction follows the current
-`frontend-slides` default style: black stage, monospace typography, green primary
-accents, orange contrast accents, and code-review style translucent surfaces.
-
-## Responsive Runtime Notes
-
-The runtime owns viewport fitting, keyboard navigation, vertical touch swipe
-navigation, slide progress placement, and generic responsive behavior for core
-layout primitives such as `dk-grid`, `dk-stack`, and `dk-table`.
-
-Themes own design tokens: colors, typography sizes, spacing, surfaces, shadows,
-and their compact/tablet/mobile token values. The current implementation uses
-plain CSS variables, media queries, container queries, and Pointer Events. No
-responsive helper SDK is used.
-
-Desktop viewports keep the default 16:9 slide stage. Tablet and iPad viewports
-adapt the stage closer to the device: 4:3 in landscape and 3:4 in portrait. Small
-portrait phones switch to a 9:16 stage so text-heavy slides remain inspectable
-without adding a mobile editor mode.
-
-## Current DSL Scope
-
-The first schema covers Markdown-like basics:
-
-- `dk-title`
-- `dk-subtitle`
-- `dk-heading`
-- `dk-text`
-- `dk-list` / `dk-item`
-- `dk-code`
-- `dk-quote`
-- `dk-link`
-- `dk-table` / `dk-row` / `dk-cell`
-
-`dk-list` supports semantic marker variants for common presentation patterns:
-use `marker="status"` with `dk-item tone="success"` / `tone="danger"` for
-check/cross capability lists, and `marker="none"` when a list should not display
-the default terminal marker.
-
-Core layout primitives are included because simple layout control is not a plugin concern:
-
-- `dk-grid`
-- `dk-region`
-- `dk-stack`
-- alignment attributes
-- width attributes: `width="auto|prose|wide|full"` on content elements and
-  `content-width="auto|prose|wide|full"` on `dk-slide`, `dk-region`, or
-  `dk-stack`
-
-`auto` keeps each element's semantic default width: body text stays readable,
-grids fill the available area, and tables use the standard content width.
-Use `full` when a structural element such as a table should use the full slide
-content area.
-
-`dk-raw` exists as an explicit escape hatch for raw HTML/CSS/JS when the core DSL is insufficient.
-
-`dk-code` uses its `language` attribute as metadata. Markdown fence markers such
-as ` ```ts ` and ` ``` ` are authoring syntax and should not be rendered inside
-the code block. Syntax highlighting is intentionally out of the core MVP; it
-should be added later through an optional highlighter plugin or component pack.
-
-## Not Decided Yet
-
-- Public package names
-- CDN shape
-- Installer/distribution method
-- Plugin loading format
-- Production documentation structure
