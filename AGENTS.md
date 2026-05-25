@@ -22,7 +22,7 @@ the deck genuinely needs an escape hatch.
 ## Repository Layout
 
 ```txt
-packages/runtime-standard   Browser runtime and built-in theme/components
+packages/runtime-standard   Browser runtime and built-in plugins
 packages/schema             Element manifest and schema checks
 packages/cli                dev server, validate, screenshot, inspect, comments
 docs                        Design notes and workflow docs
@@ -102,6 +102,9 @@ pnpm precommit
 - Keep decks declarative. Use `dk-*` elements and attributes before raw styles.
 - Do not add broad styling controls just to solve one slide. First ask whether
   the right fix is a component, theme token, schema update, or plugin behavior.
+- Treat the default theme as a built-in plugin. Theme-specific tokens and visual
+  defaults belong in the theme plugin, while runtime core styles should stay
+  structural.
 - When adding or changing DSL attributes, update the schema manifest and tests.
 - When changing runtime source, update the generated runtime bundle.
 - When changing CLI behavior, add CLI/client tests where practical.

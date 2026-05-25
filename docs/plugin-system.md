@@ -110,12 +110,20 @@ Third-party plugins should use their own vendor prefix:
 The runtime currently registers these built-in plugins:
 
 - `core`: deck, slide, text, layout, table, code, and other baseline elements.
-- `theme:terminal-green`: the current default theme slug.
+- `theme:terminal-green`: the current default theme, including its design tokens
+  and visual CSS variables.
 - `diagram-basic`: semantic flow and pyramid diagram templates.
 
 These are still bundled into the standard runtime. The important boundary is
 that built-ins now use the same registry surface that future first-party and
 community plugins will use.
+
+Runtime core styles should stay structural: viewport fitting, element display
+defaults, layout mechanics, navigation affordances, and generic state selectors.
+Theme plugins own the visual defaults that make a deck look like a specific
+theme: color tokens, typography tokens, surfaces, shadows, spacing tokens, and
+theme-specific decorative variables. A default theme is therefore just a
+built-in theme plugin that the standard runtime registers by default.
 
 ## Current Limits
 

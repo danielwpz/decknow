@@ -121,12 +121,12 @@ The runtime source lives in `packages/runtime-standard/src/` and is built into
 `packages/runtime-standard/decknow.js`. The current plugin foundation is
 documented in `docs/plugin-system.md`.
 
-The current built-in default theme is `terminal-green`. It is intentionally kept
-inside `packages/runtime-standard` for the first local-development version so a
-deck still only needs one runtime script. Its visual direction follows the
-current `frontend-slides` default style: black stage, monospace typography,
-green primary accents, orange contrast accents, and code-review style translucent
-surfaces.
+The current default theme is `terminal-green`, provided by the built-in
+`theme:terminal-green` plugin. It is bundled into `packages/runtime-standard` for
+the first local-development version so a deck still only needs one runtime
+script. Its visual direction follows the current `frontend-slides` default style:
+black stage, monospace typography, green primary accents, orange contrast
+accents, and code-review style translucent surfaces.
 
 ## Responsive Runtime Notes
 
