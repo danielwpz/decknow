@@ -107,6 +107,7 @@ export function createTerminalGreenThemePlugin(version) {
     version,
     kind: "theme",
     themes: ["terminal-green"],
+    colorScheme: "dark",
     styles: {
       id: "tokens",
       css: terminalGreenThemeStyles,

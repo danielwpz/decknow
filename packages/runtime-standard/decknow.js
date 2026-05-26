@@ -105,6 +105,39 @@
   dk-flow {
     --dk-flow-gap-local: var(--dk-grid-gap-lg);
     --dk-flow-arrow-head: clamp(12px, 1.1cqw, 18px);
+    --dk-flow-connector-thickness: clamp(16px, 1.6cqw, 24px);
+    --dk-flow-connector-color: var(--dk-accent);
+    --dk-flow-connector-fade: rgba(57, 211, 83, 0.12);
+    --dk-flow-connector-bg-horizontal: linear-gradient(
+      90deg,
+      var(--dk-flow-connector-color),
+      var(--dk-flow-connector-fade)
+    );
+    --dk-flow-connector-bg-vertical: linear-gradient(
+      180deg,
+      var(--dk-flow-connector-color),
+      var(--dk-flow-connector-fade)
+    );
+    --dk-flow-connector-radius: 999px;
+    --dk-flow-connector-opacity: 0.96;
+    --dk-flow-connector-clip-horizontal: polygon(
+      0 38%,
+      calc(100% - var(--dk-flow-arrow-head)) 38%,
+      calc(100% - var(--dk-flow-arrow-head)) 10%,
+      100% 50%,
+      calc(100% - var(--dk-flow-arrow-head)) 90%,
+      calc(100% - var(--dk-flow-arrow-head)) 62%,
+      0 62%
+    );
+    --dk-flow-connector-clip-vertical: polygon(
+      38% 0,
+      62% 0,
+      62% calc(100% - var(--dk-flow-arrow-head)),
+      90% calc(100% - var(--dk-flow-arrow-head)),
+      50% 100%,
+      10% calc(100% - var(--dk-flow-arrow-head)),
+      38% calc(100% - var(--dk-flow-arrow-head))
+    );
     position: relative;
     z-index: 1;
     display: flex;
@@ -209,20 +242,12 @@
     top: 50%;
     left: calc(100% + 4px);
     width: calc(var(--dk-flow-gap-local) - 4px);
-    height: clamp(16px, 1.6cqw, 24px);
+    height: var(--dk-flow-connector-thickness);
     transform: translateY(-50%);
-    border-radius: 999px;
-    background: linear-gradient(90deg, var(--dk-accent), rgba(57, 211, 83, 0.12));
-    clip-path: polygon(
-      0 38%,
-      calc(100% - var(--dk-flow-arrow-head)) 38%,
-      calc(100% - var(--dk-flow-arrow-head)) 10%,
-      100% 50%,
-      calc(100% - var(--dk-flow-arrow-head)) 90%,
-      calc(100% - var(--dk-flow-arrow-head)) 62%,
-      0 62%
-    );
-    opacity: 0.96;
+    border-radius: var(--dk-flow-connector-radius);
+    background: var(--dk-flow-connector-bg-horizontal);
+    clip-path: var(--dk-flow-connector-clip-horizontal);
+    opacity: var(--dk-flow-connector-opacity);
   }
 
   dk-flow[arrows="none"] dk-flow-step::after {
@@ -237,19 +262,11 @@
     top: calc(100% + 4px);
     right: auto;
     left: 50%;
-    width: clamp(16px, 1.6cqw, 24px);
+    width: var(--dk-flow-connector-thickness);
     height: calc(var(--dk-flow-gap-local) - 4px);
     transform: translateX(-50%);
-    background: linear-gradient(180deg, var(--dk-accent), rgba(57, 211, 83, 0.12));
-    clip-path: polygon(
-      38% 0,
-      62% 0,
-      62% calc(100% - var(--dk-flow-arrow-head)),
-      90% calc(100% - var(--dk-flow-arrow-head)),
-      50% 100%,
-      10% calc(100% - var(--dk-flow-arrow-head)),
-      38% calc(100% - var(--dk-flow-arrow-head))
-    );
+    background: var(--dk-flow-connector-bg-vertical);
+    clip-path: var(--dk-flow-connector-clip-vertical);
   }
 
   dk-flow[data-dk-orientation="vertical"] .dk-flow-step-label {
@@ -279,37 +296,21 @@
       top: calc(100% + 4px);
       right: auto;
       left: 50%;
-      width: clamp(16px, 1.6cqw, 24px);
+      width: var(--dk-flow-connector-thickness);
       height: calc(var(--dk-flow-gap-local) - 4px);
       transform: translateX(-50%);
-      background: linear-gradient(180deg, var(--dk-accent), rgba(57, 211, 83, 0.12));
-      clip-path: polygon(
-        38% 0,
-        62% 0,
-        62% calc(100% - var(--dk-flow-arrow-head)),
-        90% calc(100% - var(--dk-flow-arrow-head)),
-        50% 100%,
-        10% calc(100% - var(--dk-flow-arrow-head)),
-        38% calc(100% - var(--dk-flow-arrow-head))
-      );
+      background: var(--dk-flow-connector-bg-vertical);
+      clip-path: var(--dk-flow-connector-clip-vertical);
     }
 
     dk-flow[data-dk-orientation="horizontal"] dk-flow-step:not(:last-child)::after {
       top: 50%;
       left: calc(100% + 4px);
       width: calc(var(--dk-flow-gap-local) - 4px);
-      height: clamp(16px, 1.6cqw, 24px);
+      height: var(--dk-flow-connector-thickness);
       transform: translateY(-50%);
-      background: linear-gradient(90deg, var(--dk-accent), rgba(57, 211, 83, 0.12));
-      clip-path: polygon(
-        0 38%,
-        calc(100% - var(--dk-flow-arrow-head)) 38%,
-        calc(100% - var(--dk-flow-arrow-head)) 10%,
-        100% 50%,
-        calc(100% - var(--dk-flow-arrow-head)) 90%,
-        calc(100% - var(--dk-flow-arrow-head)) 62%,
-        0 62%
-      );
+      background: var(--dk-flow-connector-bg-horizontal);
+      clip-path: var(--dk-flow-connector-clip-horizontal);
     }
 
     dk-flow-step {
@@ -690,6 +691,185 @@
     };
   }
 
+  // plugins/theme-paper-ink/src/index.js
+  var paperInkThemeStyles = `
+  dk-deck[theme="paper-ink"] {
+    --dk-deck-bg: #efe8dc;
+    --dk-deck-background:
+      linear-gradient(rgba(39, 31, 24, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(39, 31, 24, 0.026) 1px, transparent 1px),
+      linear-gradient(135deg, #f7f1e7 0%, #eadfce 100%);
+    --dk-slide-bg: #fffaf0;
+    --dk-slide-surface:
+      linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(250, 243, 232, 0.98)),
+      var(--dk-slide-bg);
+    --dk-slide-solid-surface: #fffaf0;
+    --dk-slide-overlay:
+      linear-gradient(rgba(39, 31, 24, 0.04) 1px, transparent 1px);
+    --dk-slide-overlay-size: 100% 22px;
+    --dk-slide-overlay-opacity: 0.72;
+    --dk-slide-strip: linear-gradient(90deg, #2a2119, var(--dk-accent), var(--dk-accent-2));
+    --dk-slide-ink: #231c16;
+    --dk-muted: #74685d;
+    --dk-border: rgba(66, 52, 40, 0.18);
+    --dk-slide-border: rgba(66, 52, 40, 0.22);
+    --dk-accent: #b42318;
+    --dk-accent-2: #9a6a1f;
+    --dk-danger: #9f1d1d;
+    --dk-danger-soft: rgba(159, 29, 29, 0.1);
+    --dk-danger-line: rgba(159, 29, 29, 0.34);
+    --dk-panel-surface: rgba(255, 253, 248, 0.78);
+    --dk-panel-surface-muted: rgba(238, 226, 210, 0.72);
+    --dk-panel-surface-accent:
+      linear-gradient(135deg, rgba(180, 35, 24, 0.1), rgba(255, 253, 248, 0.84));
+    --dk-panel-surface-strong:
+      linear-gradient(135deg, #2a2119, #473524 62%, #6d3b24);
+    --dk-panel-ink-strong: #fffaf0;
+    --dk-panel-border: rgba(180, 35, 24, 0.22);
+    --dk-panel-shadow: 0 18px 46px rgba(66, 52, 40, 0.14);
+    --dk-code-bg: #2a2119;
+    --dk-code-ink: #fff4df;
+    --dk-inline-code-bg: rgba(180, 35, 24, 0.1);
+    --dk-quote-surface: rgba(154, 106, 31, 0.1);
+    --dk-table-surface: rgba(255, 253, 248, 0.72);
+    --dk-table-header-surface: rgba(180, 35, 24, 0.12);
+    --dk-shadow: 0 30px 80px rgba(66, 52, 40, 0.2);
+    --dk-radius: 6px;
+    --dk-deck-pad: clamp(12px, 2vw, 28px);
+    --dk-stage-vh: 100vh;
+    --dk-stage-aspect: 16 / 9;
+    --dk-stage-fit-width: 16;
+    --dk-stage-fit-height: 9;
+    --dk-slide-pad: clamp(30px, 5cqw, 72px);
+    --dk-slide-gap: clamp(14px, 2cqw, 28px);
+    --dk-grid-gap: clamp(14px, 2cqw, 28px);
+    --dk-grid-gap-sm: clamp(8px, 1.2cqw, 16px);
+    --dk-grid-gap-lg: clamp(20px, 3cqw, 40px);
+    --dk-stack-gap: clamp(10px, 1.5cqw, 22px);
+    --dk-stack-gap-sm: clamp(6px, 1cqw, 14px);
+    --dk-stack-gap-lg: clamp(18px, 2.4cqw, 34px);
+    --dk-region-pad: clamp(14px, 2cqw, 28px);
+    --dk-title-size: clamp(42px, 7.2cqw, 104px);
+    --dk-title-size-tablet: clamp(34px, 6.3cqw, 68px);
+    --dk-title-size-phone: clamp(28px, 7cqw, 42px);
+    --dk-subtitle-size: clamp(17px, 1.85cqw, 28px);
+    --dk-subtitle-size-tablet: clamp(14px, 1.8cqw, 20px);
+    --dk-subtitle-size-phone: clamp(12px, 3.4cqw, 16px);
+    --dk-heading-size: clamp(28px, 3.8cqw, 56px);
+    --dk-heading-size-tablet: clamp(22px, 3.4cqw, 38px);
+    --dk-heading-size-phone: clamp(18px, 5.2cqw, 26px);
+    --dk-heading-3-size: clamp(22px, 2.7cqw, 38px);
+    --dk-heading-3-size-tablet: clamp(18px, 2.6cqw, 28px);
+    --dk-heading-3-size-phone: clamp(15px, 4.2cqw, 20px);
+    --dk-heading-4-size: clamp(18px, 2cqw, 27px);
+    --dk-heading-4-size-tablet: clamp(15px, 2.1cqw, 22px);
+    --dk-heading-4-size-phone: clamp(13px, 3.6cqw, 17px);
+    --dk-text-size: clamp(17px, 1.58cqw, 24px);
+    --dk-text-size-tablet: clamp(13px, 1.5cqw, 18px);
+    --dk-text-size-phone: clamp(11px, 3.1cqw, 14px);
+    --dk-item-size: clamp(17px, 1.52cqw, 24px);
+    --dk-item-size-tablet: clamp(13px, 1.45cqw, 18px);
+    --dk-item-size-phone: clamp(11px, 3cqw, 14px);
+    --dk-code-size: clamp(13px, 1.2cqw, 18px);
+    --dk-code-size-tablet: clamp(11px, 1.16cqw, 15px);
+    --dk-code-size-phone: clamp(10px, 2.7cqw, 12px);
+    --dk-quote-size: clamp(24px, 3.1cqw, 46px);
+    --dk-quote-size-tablet: clamp(18px, 2.7cqw, 30px);
+    --dk-quote-size-phone: clamp(15px, 4.2cqw, 20px);
+    --dk-cell-size: clamp(13px, 1.18cqw, 18px);
+    --dk-cell-size-tablet: clamp(11px, 1.1cqw, 15px);
+    --dk-cell-size-phone: clamp(10px, 2.6cqw, 12px);
+    --dk-font-display: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+    --dk-font-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --dk-font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    --dk-title-prefix: "";
+    --dk-heading-prefix: "";
+    --dk-flow-arrow-head: clamp(8px, 0.8cqw, 13px);
+    --dk-flow-connector-thickness: clamp(7px, 0.72cqw, 11px);
+    --dk-flow-connector-color: rgba(154, 106, 31, 0.68);
+    --dk-flow-connector-fade: rgba(154, 106, 31, 0.12);
+    --dk-flow-connector-bg-horizontal: linear-gradient(
+      90deg,
+      var(--dk-flow-connector-color),
+      var(--dk-flow-connector-fade)
+    );
+    --dk-flow-connector-bg-vertical: linear-gradient(
+      180deg,
+      var(--dk-flow-connector-color),
+      var(--dk-flow-connector-fade)
+    );
+    --dk-flow-connector-radius: 2px;
+    --dk-flow-connector-opacity: 0.78;
+  }
+
+  dk-deck[theme="paper-ink"] dk-title,
+  dk-deck[theme="paper-ink"] dk-heading {
+    font-family: var(--dk-font-display);
+    font-weight: 700;
+  }
+
+  dk-deck[theme="paper-ink"] dk-code {
+    border-color: rgba(42, 33, 25, 0.2);
+  }
+
+  dk-deck[theme="paper-ink"] dk-region[frame][tone="accent"] {
+    --dk-region-border: rgba(180, 35, 24, 0.34);
+  }
+
+  dk-deck[theme="paper-ink"] dk-region[frame][tone="strong"] {
+    color: var(--dk-panel-ink-strong);
+    --dk-region-border: rgba(154, 106, 31, 0.36);
+    --dk-region-accent: #e2b75d;
+  }
+
+  dk-deck[theme="paper-ink"] dk-region[frame][tone="strong"] dk-text,
+  dk-deck[theme="paper-ink"] dk-region[frame][tone="strong"] dk-subtitle {
+    color: rgba(255, 250, 240, 0.82);
+  }
+
+  dk-deck[theme="paper-ink"] dk-list[marker="status"] dk-item[tone="success"] {
+    --dk-item-marker-bg: rgba(180, 35, 24, 0.1);
+    --dk-item-marker-ink: var(--dk-accent);
+    --dk-item-marker-border: rgba(180, 35, 24, 0.28);
+  }
+
+  dk-deck[theme="paper-ink"] dk-flow-step[tone="accent"] {
+    --dk-flow-step-surface: rgba(180, 35, 24, 0.09);
+    --dk-flow-step-border: rgba(180, 35, 24, 0.28);
+  }
+
+  dk-deck[theme="paper-ink"] dk-flow-step[emphasis],
+  dk-deck[theme="paper-ink"] dk-flow-step[tone="strong"] {
+    --dk-flow-step-accent: var(--dk-accent-2);
+    --dk-flow-step-border: rgba(154, 106, 31, 0.36);
+    --dk-flow-step-surface: rgba(154, 106, 31, 0.12);
+  }
+
+  dk-deck[theme="paper-ink"] dk-pyramid-level[tone="accent"] {
+    --dk-pyramid-level-border: rgba(180, 35, 24, 0.32);
+    --dk-pyramid-level-surface: rgba(180, 35, 24, 0.1);
+  }
+
+  dk-deck[theme="paper-ink"] dk-pyramid-level[tone="strong"],
+  dk-deck[theme="paper-ink"] dk-pyramid-level[emphasis] {
+    --dk-pyramid-level-border: rgba(154, 106, 31, 0.36);
+    --dk-pyramid-level-surface: rgba(154, 106, 31, 0.14);
+  }
+`;
+  function createPaperInkThemePlugin(version) {
+    return {
+      name: "theme:paper-ink",
+      version,
+      kind: "theme",
+      themes: ["paper-ink"],
+      colorScheme: "light",
+      styles: {
+        id: "tokens",
+        css: paperInkThemeStyles
+      }
+    };
+  }
+
   // plugins/theme-terminal-green/src/index.js
   var terminalGreenThemeStyles = `
   :root,
@@ -799,6 +979,7 @@
       version,
       kind: "theme",
       themes: ["terminal-green"],
+      colorScheme: "dark",
       styles: {
         id: "tokens",
         css: terminalGreenThemeStyles
@@ -809,6 +990,7 @@
   // packages/runtime-standard/src/plugin-registry.js
   var PLUGIN_NAME_PATTERN = /^[a-z0-9][a-z0-9-:.]*$/;
   var ELEMENT_PREFIX_PATTERN = /^[a-z0-9][a-z0-9-]*-$/;
+  var COLOR_SCHEMES = /* @__PURE__ */ new Set(["dark", "light"]);
   var RESERVED_META_KEYS = /* @__PURE__ */ new Set(["builtin", "official", "trusted"]);
   function createPluginRegistry(environment = {}, options = {}) {
     const env = resolveEnvironment(environment);
@@ -818,6 +1000,7 @@
     const elementOwners = /* @__PURE__ */ new Map();
     const selectableSelectors = /* @__PURE__ */ new Set();
     const themeOwners = /* @__PURE__ */ new Map();
+    const themeColorSchemes = /* @__PURE__ */ new Map();
     function registerPlugin(plugin) {
       const record = normalizePlugin(plugin, { trusted: false });
       assertCanRegister(record);
@@ -846,6 +1029,7 @@
           );
         }
         themeOwners.set(theme, record.name);
+        if (record.colorScheme) themeColorSchemes.set(theme, record.colorScheme);
       }
       const styleIds = injectPluginStyles(record);
       record.styleIds = styleIds;
@@ -949,12 +1133,16 @@
     function getThemeNames() {
       return Array.from(themeOwners.keys());
     }
+    function getThemeColorScheme(themeName) {
+      return themeColorSchemes.get(themeName) || null;
+    }
     function getManifest() {
       return {
         plugins: getPlugins(),
         elements: getElementNames(),
         selectable: getSelectableSelectors(),
-        themes: getThemeNames()
+        themes: getThemeNames(),
+        themeColorSchemes: Object.fromEntries(themeColorSchemes)
       };
     }
     return {
@@ -965,6 +1153,7 @@
       getSelectableSelectors,
       getElementNames,
       getThemeNames,
+      getThemeColorScheme,
       getManifest
     };
   }
@@ -981,6 +1170,7 @@
       );
     }
     const elements = normalizeElements(plugin.elements);
+    const colorScheme = normalizeColorScheme(plugin.colorScheme);
     return {
       name: plugin.name,
       version: plugin.version || "0.0.0",
@@ -990,6 +1180,7 @@
       elements,
       selectable: normalizeStringList(plugin.selectable, Object.keys(elements)),
       themes: normalizeStringList(plugin.themes, []),
+      colorScheme,
       styles: normalizeStyles(plugin.styles),
       schema: plugin.schema || null,
       meta: sanitizeMeta(plugin.meta)
@@ -1021,6 +1212,14 @@
     if (typeof value === "object") return Object.keys(value);
     return [String(value)].filter(Boolean);
   }
+  function normalizeColorScheme(value) {
+    if (value === void 0 || value === null || value === "") return null;
+    const scheme = String(value).toLowerCase();
+    if (!COLOR_SCHEMES.has(scheme)) {
+      throw new Error('Decknow plugin colorScheme must be "dark" or "light".');
+    }
+    return scheme;
+  }
   function sanitizeMeta(meta) {
     if (!meta || typeof meta !== "object" || Array.isArray(meta)) return {};
     return Object.fromEntries(Object.entries(meta).filter(([key]) => !RESERVED_META_KEYS.has(key)));
@@ -1035,6 +1234,7 @@
       elements: Object.keys(record.elements),
       selectable: [...record.selectable],
       themes: [...record.themes],
+      colorScheme: record.colorScheme,
       styleIds: [...record.styleIds || []],
       schema: record.schema,
       meta: record.meta
@@ -1067,7 +1267,7 @@
   var pluginRegistry = createPluginRegistry(
     {},
     {
-      officialPluginNames: ["core", "theme:terminal-green", "diagram-basic"]
+      officialPluginNames: ["core", "theme:terminal-green", "theme:paper-ink", "diagram-basic"]
     }
   );
   function isDebugEnabled() {
@@ -1151,6 +1351,12 @@
       },
       getSelectableSelectors() {
         return pluginRegistry.getSelectableSelectors();
+      },
+      getThemeColorScheme(themeName) {
+        return pluginRegistry.getThemeColorScheme(themeName);
+      },
+      getColorScheme() {
+        return runtimeState.activeDeck?.getColorScheme?.() || "dark";
       },
       getRuntimeManifest() {
         return pluginRegistry.getManifest();
@@ -2077,13 +2283,129 @@
       display: block;
       min-width: 0;
       min-height: 0;
+      color: var(--dk-slide-ink);
+      font-family: var(--dk-font-body);
+      font-size: var(--dk-text-size);
+      line-height: 1.42;
     }
 
     dk-raw[frame] {
       padding: var(--dk-region-pad);
       border: 1px dashed var(--dk-border);
       border-radius: 8px;
-      background: rgba(13, 17, 23, 0.38);
+      background: var(--dk-panel-surface-muted);
+    }
+
+    dk-raw > :first-child {
+      margin-top: 0;
+    }
+
+    dk-raw > :last-child {
+      margin-bottom: 0;
+    }
+
+    dk-raw :is(p, ul, ol, blockquote, pre, table, figure) {
+      margin-block: 0 var(--dk-stack-gap-sm);
+    }
+
+    dk-raw :is(ul, ol) {
+      padding-inline-start: 1.25em;
+    }
+
+    dk-raw li {
+      margin-block: 0.34em;
+      padding-inline-start: 0.15em;
+    }
+
+    dk-raw a {
+      color: var(--dk-accent);
+      font-weight: 700;
+      text-decoration-thickness: 0.12em;
+      text-underline-offset: 0.18em;
+      overflow-wrap: anywhere;
+    }
+
+    dk-raw :is(strong, b) {
+      font-weight: 850;
+    }
+
+    dk-raw :is(em, i) {
+      color: var(--dk-accent);
+    }
+
+    dk-raw code {
+      padding: 0.08em 0.34em;
+      border: 1px solid var(--dk-border);
+      border-radius: 5px;
+      background: var(--dk-inline-code-bg);
+      color: var(--dk-accent);
+      font-family: var(--dk-font-mono);
+      font-size: 0.9em;
+    }
+
+    dk-raw pre {
+      padding: clamp(14px, 1.8cqw, 24px);
+      overflow: auto;
+      border: 1px solid var(--dk-border);
+      border-radius: 8px;
+      background: var(--dk-code-bg);
+      color: var(--dk-code-ink);
+      font-family: var(--dk-font-mono);
+      font-size: var(--dk-code-size);
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    dk-raw pre code {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    dk-raw blockquote {
+      margin-inline: 0;
+      padding: clamp(12px, 1.8cqw, 24px);
+      border-left: clamp(4px, 0.6cqw, 8px) solid var(--dk-accent-2);
+      border-radius: 0 8px 8px 0;
+      background: var(--dk-quote-surface);
+    }
+
+    dk-raw table {
+      width: 100%;
+      overflow: hidden;
+      border: 1px solid var(--dk-border);
+      border-collapse: collapse;
+      border-radius: 8px;
+      background: var(--dk-table-surface);
+      font-size: var(--dk-cell-size);
+      line-height: 1.35;
+    }
+
+    dk-raw :is(th, td) {
+      padding: clamp(8px, 1.1cqw, 15px);
+      border: 1px solid var(--dk-border);
+      vertical-align: top;
+    }
+
+    dk-raw th {
+      background: var(--dk-table-header-surface);
+      color: var(--dk-accent);
+      font-weight: 800;
+    }
+
+    dk-raw hr {
+      width: 100%;
+      margin-block: var(--dk-stack-gap);
+      border: 0;
+      border-top: 1px solid var(--dk-border);
+    }
+
+    dk-raw :is(input, button, textarea, select) {
+      color: inherit;
+      font: inherit;
+      accent-color: var(--dk-accent);
     }
 
     dk-slide[layout="grid"] > dk-grid,
@@ -2092,6 +2414,14 @@
     }
 
     .dk-slide-dots {
+      --dk-chrome-dots-bg: rgba(1, 4, 9, 0.38);
+      --dk-chrome-dots-bg-visible: rgba(1, 4, 9, 0.56);
+      --dk-chrome-dots-border: rgba(139, 148, 158, 0.18);
+      --dk-chrome-dots-border-visible: rgba(139, 148, 158, 0.28);
+      --dk-chrome-dot-bg: rgba(139, 148, 158, 0.42);
+      --dk-chrome-dot-ring: rgba(240, 246, 252, 0.08);
+      --dk-chrome-dot-active-bg: linear-gradient(180deg, #39d353, #ff8f3d);
+      --dk-chrome-dot-active-shadow: 0 0 18px rgba(57, 211, 83, 0.34);
       position: fixed;
       top: 50%;
       right: clamp(14px, 2vw, 28px);
@@ -2102,9 +2432,9 @@
       align-items: center;
       gap: clamp(8px, 1.1vh, 14px);
       padding: 10px 8px;
-      border: 1px solid rgba(139, 148, 158, 0.18);
+      border: 1px solid var(--dk-chrome-dots-border);
       border-radius: 999px;
-      background: rgba(1, 4, 9, 0.38);
+      background: var(--dk-chrome-dots-bg);
       backdrop-filter: blur(10px);
       opacity: 0.14;
       filter: saturate(0.7);
@@ -2121,16 +2451,16 @@
       transform: translateY(-50%) translateX(0);
       opacity: 1;
       filter: saturate(1);
-      border-color: rgba(139, 148, 158, 0.28);
-      background: rgba(1, 4, 9, 0.56);
+      border-color: var(--dk-chrome-dots-border-visible);
+      background: var(--dk-chrome-dots-bg-visible);
     }
 
     .dk-slide-dot {
       width: clamp(6px, 0.72vw, 9px);
       height: clamp(6px, 0.72vw, 9px);
       border-radius: 999px;
-      background: rgba(139, 148, 158, 0.42);
-      box-shadow: 0 0 0 1px rgba(240, 246, 252, 0.08);
+      background: var(--dk-chrome-dot-bg);
+      box-shadow: 0 0 0 1px var(--dk-chrome-dot-ring);
       opacity: 0.72;
       transition:
         width 180ms ease,
@@ -2142,9 +2472,22 @@
 
     .dk-slide-dot[aria-current="true"] {
       height: clamp(18px, 2.6vh, 30px);
-      background: linear-gradient(180deg, var(--dk-accent), var(--dk-accent-2));
-      box-shadow: 0 0 18px rgba(57, 211, 83, 0.34);
+      background: var(--dk-chrome-dot-active-bg);
+      box-shadow: var(--dk-chrome-dot-active-shadow);
       opacity: 1;
+    }
+
+    dk-deck[data-dk-color-scheme="light"] .dk-slide-dots {
+      --dk-chrome-dots-bg: rgba(255, 250, 240, 0.48);
+      --dk-chrome-dots-bg-visible: rgba(255, 250, 240, 0.82);
+      --dk-chrome-dots-border: rgba(66, 52, 40, 0.16);
+      --dk-chrome-dots-border-visible: rgba(66, 52, 40, 0.26);
+      --dk-chrome-dot-bg: rgba(66, 52, 40, 0.28);
+      --dk-chrome-dot-ring: rgba(255, 255, 255, 0.72);
+      --dk-chrome-dot-active-bg: linear-gradient(180deg, #e3d8c4, #c9b79b);
+      --dk-chrome-dot-active-shadow: 0 0 0 1px rgba(255, 250, 240, 0.88),
+        0 0 0 2px rgba(154, 106, 31, 0.16),
+        0 8px 18px rgba(66, 52, 40, 0.14);
     }
 
     .dk-slide-dot__text {
@@ -2188,10 +2531,18 @@
         line-height: 1.32;
       }
 
+      dk-raw {
+        font-size: var(--dk-text-size-tablet);
+      }
+
       dk-code pre {
         font-size: var(--dk-code-size-tablet);
         line-height: 1.44;
         max-height: 34cqh;
+      }
+
+      dk-raw pre {
+        font-size: var(--dk-code-size-tablet);
       }
 
       dk-quote {
@@ -2200,7 +2551,8 @@
 
       dk-cell,
       dk-th,
-      dk-td {
+      dk-td,
+      dk-raw table {
         font-size: var(--dk-cell-size-tablet);
       }
 
@@ -2254,11 +2606,22 @@
         line-height: 1.24;
       }
 
+      dk-raw {
+        font-size: var(--dk-text-size-phone);
+        line-height: 1.32;
+      }
+
       dk-code pre {
         padding: clamp(8px, 2.4cqw, 14px);
         font-size: var(--dk-code-size-phone);
         line-height: 1.34;
         max-height: 30cqh;
+      }
+
+      dk-raw pre {
+        padding: clamp(8px, 2.4cqw, 14px);
+        font-size: var(--dk-code-size-phone);
+        line-height: 1.34;
       }
 
       dk-code[inline] code {
@@ -2281,6 +2644,15 @@
         padding: clamp(6px, 1.6cqw, 10px);
         font-size: var(--dk-cell-size-phone);
         line-height: 1.24;
+      }
+
+      dk-raw table {
+        font-size: var(--dk-cell-size-phone);
+        line-height: 1.24;
+      }
+
+      dk-raw :is(th, td) {
+        padding: clamp(6px, 1.6cqw, 10px);
       }
 
       dk-stack[direction="horizontal"]:not([responsive="none"]) {
@@ -2404,7 +2776,16 @@
     const selection = window.getSelection?.();
     return Boolean(selection && !selection.isCollapsed && selection.toString().trim());
   }
+  function normalizeColorScheme2(value) {
+    return value === "light" ? "light" : "dark";
+  }
   var DKDeck = class extends HTMLElement {
+    static get observedAttributes() {
+      return ["theme"];
+    }
+    attributeChangedCallback() {
+      this.syncColorScheme();
+    }
     connectedCallback() {
       if (this.dataset.dkScheduled === "true") return;
       this.dataset.dkScheduled = "true";
@@ -2421,6 +2802,7 @@
       this.currentStep = 0;
       this.slides = Array.from(this.querySelectorAll(":scope > dk-slide"));
       if (!this.hasAttribute("tabindex")) this.setAttribute("tabindex", "0");
+      this.syncColorScheme();
       this.ensureSlideDots();
       this.ensureDebugPanel();
       this.setupKeyboard();
@@ -2429,9 +2811,24 @@
       this.focusDeck();
       runtimeState.decks.push(this);
       runtimeState.activeDeck = this;
+      this.syncColorScheme();
       runtimeState.resolveReady?.(this);
       document.dispatchEvent(new CustomEvent("decknow:ready", { detail: { deck: this } }));
       debugLog("ready", this.screenshotState());
+    }
+    getColorScheme() {
+      const theme = this.getAttribute("theme") || "terminal-green";
+      return normalizeColorScheme2(pluginRegistry.getThemeColorScheme(theme));
+    }
+    syncColorScheme() {
+      const scheme = this.getColorScheme();
+      this.dataset.dkColorScheme = scheme;
+      this.style.colorScheme = scheme;
+      if (!runtimeState.activeDeck || runtimeState.activeDeck === this) {
+        document.documentElement.dataset.dkColorScheme = scheme;
+        document.body.dataset.dkColorScheme = scheme;
+      }
+      return scheme;
     }
     readInitialSlide() {
       const hash = window.location.hash.match(/slide-(\d+)/);
@@ -2639,6 +3036,7 @@
       const target = Math.max(0, Math.min(this.slides.length - 1, Number(index) || 0));
       this.currentSlide = target;
       this.currentStep = 0;
+      this.syncColorScheme();
       this.slides.forEach((slide, slideIndex) => {
         const active = slideIndex === target;
         if (active) {
@@ -2690,6 +3088,7 @@
         step: this.currentStep,
         slideCount: this.getSlideCount(),
         theme: this.getAttribute("theme") || "terminal-green",
+        colorScheme: this.getColorScheme(),
         fit: this.getAttribute("fit") || "contain",
         viewport: {
           width: window.innerWidth,
@@ -2854,6 +3253,7 @@
     "dk-raw"
   ];
   pluginRegistry.registerBuiltInPlugin(createTerminalGreenThemePlugin(DECKNOW_VERSION));
+  pluginRegistry.registerBuiltInPlugin(createPaperInkThemePlugin(DECKNOW_VERSION));
   pluginRegistry.registerBuiltInPlugin({
     name: "core",
     version: DECKNOW_VERSION,

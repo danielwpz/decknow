@@ -6,7 +6,7 @@
   "required": ["version", "slides"],
   "properties": {
     "version": { "const": 0 },
-    "theme": { "enum": ["terminal-green"] },
+    "theme": { "enum": ["terminal-green", "paper-ink"] },
     "swipe": { "enum": ["auto", "none"] },
     "slides": {
       "type": "array",

@@ -35,6 +35,9 @@ importers:
       '@decknow/plugin-diagram-basic':
         specifier: workspace:*
         version: link:../../plugins/diagram-basic
+      '@decknow/plugin-theme-paper-ink':
+        specifier: workspace:*
+        version: link:../../plugins/theme-paper-ink
       '@decknow/plugin-theme-terminal-green':
         specifier: workspace:*
         version: link:../../plugins/theme-terminal-green
@@ -53,6 +56,9 @@ importers:
       '@decknow/plugin-diagram-basic':
         specifier: workspace:*
         version: link:../../plugins/diagram-basic
+      '@decknow/plugin-theme-paper-ink':
+        specifier: workspace:*
+        version: link:../../plugins/theme-paper-ink
       '@decknow/plugin-theme-terminal-green':
         specifier: workspace:*
         version: link:../../plugins/theme-terminal-green
@@ -60,6 +66,8 @@ importers:
   packages/schema: {}
 
   plugins/diagram-basic: {}
+
+  plugins/theme-paper-ink: {}
 
   plugins/theme-terminal-green: {}
 

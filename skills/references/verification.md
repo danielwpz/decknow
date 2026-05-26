@@ -1,5 +1,8 @@
 # Verification
 
+Run verification commands from the Decknow repository root when using a source
+checkout.
+
 For deck-only edits:
 
 ```bash

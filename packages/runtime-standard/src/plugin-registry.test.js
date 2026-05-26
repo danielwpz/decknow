@@ -28,6 +28,7 @@ describe("plugin registry", () => {
       },
       selectable: ["test-card"],
       themes: ["test-theme"],
+      colorScheme: "light",
       styles: "test-card { display: block; }",
     });
 
@@ -40,10 +41,13 @@ describe("plugin registry", () => {
       elements: ["test-card"],
       selectable: ["test-card"],
       themes: ["test-theme"],
+      colorScheme: "light",
     });
     expect(env.customElements.get("test-card")).toBe(TestCard);
     expect(registry.getSelectableSelectors()).toEqual(["test-card"]);
     expect(registry.getThemeNames()).toEqual(["test-theme"]);
+    expect(registry.getThemeColorScheme("test-theme")).toBe("light");
+    expect(registry.getManifest().themeColorSchemes).toEqual({ "test-theme": "light" });
     expect(env.document.getElementById("decknow-plugin-test-plugin-default-styles")).not.toBeNull();
   });
 
@@ -199,6 +203,7 @@ describe("plugin registry", () => {
       themes: {
         sample: {},
       },
+      colorScheme: "LIGHT",
       styles: [
         {
           id: "tokens",
@@ -213,6 +218,7 @@ describe("plugin registry", () => {
       elements: {},
       selectable: [],
       themes: ["sample"],
+      colorScheme: "light",
       styles: [
         {
           id: "tokens",
@@ -220,5 +226,16 @@ describe("plugin registry", () => {
         },
       ],
     });
+  });
+
+  it("rejects non-declarative theme color schemes", () => {
+    expect(() =>
+      normalizePlugin({
+        name: "theme:sample",
+        kind: "theme",
+        themes: ["sample"],
+        colorScheme: "sepia",
+      })
+    ).toThrow(/colorScheme/);
   });
 });

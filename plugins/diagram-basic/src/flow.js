@@ -124,6 +124,39 @@ export const flowStyles = `
   dk-flow {
     --dk-flow-gap-local: var(--dk-grid-gap-lg);
     --dk-flow-arrow-head: clamp(12px, 1.1cqw, 18px);
+    --dk-flow-connector-thickness: clamp(16px, 1.6cqw, 24px);
+    --dk-flow-connector-color: var(--dk-accent);
+    --dk-flow-connector-fade: rgba(57, 211, 83, 0.12);
+    --dk-flow-connector-bg-horizontal: linear-gradient(
+      90deg,
+      var(--dk-flow-connector-color),
+      var(--dk-flow-connector-fade)
+    );
+    --dk-flow-connector-bg-vertical: linear-gradient(
+      180deg,
+      var(--dk-flow-connector-color),
+      var(--dk-flow-connector-fade)
+    );
+    --dk-flow-connector-radius: 999px;
+    --dk-flow-connector-opacity: 0.96;
+    --dk-flow-connector-clip-horizontal: polygon(
+      0 38%,
+      calc(100% - var(--dk-flow-arrow-head)) 38%,
+      calc(100% - var(--dk-flow-arrow-head)) 10%,
+      100% 50%,
+      calc(100% - var(--dk-flow-arrow-head)) 90%,
+      calc(100% - var(--dk-flow-arrow-head)) 62%,
+      0 62%
+    );
+    --dk-flow-connector-clip-vertical: polygon(
+      38% 0,
+      62% 0,
+      62% calc(100% - var(--dk-flow-arrow-head)),
+      90% calc(100% - var(--dk-flow-arrow-head)),
+      50% 100%,
+      10% calc(100% - var(--dk-flow-arrow-head)),
+      38% calc(100% - var(--dk-flow-arrow-head))
+    );
     position: relative;
     z-index: 1;
     display: flex;
@@ -228,20 +261,12 @@ export const flowStyles = `
     top: 50%;
     left: calc(100% + 4px);
     width: calc(var(--dk-flow-gap-local) - 4px);
-    height: clamp(16px, 1.6cqw, 24px);
+    height: var(--dk-flow-connector-thickness);
     transform: translateY(-50%);
-    border-radius: 999px;
-    background: linear-gradient(90deg, var(--dk-accent), rgba(57, 211, 83, 0.12));
-    clip-path: polygon(
-      0 38%,
-      calc(100% - var(--dk-flow-arrow-head)) 38%,
-      calc(100% - var(--dk-flow-arrow-head)) 10%,
-      100% 50%,
-      calc(100% - var(--dk-flow-arrow-head)) 90%,
-      calc(100% - var(--dk-flow-arrow-head)) 62%,
-      0 62%
-    );
-    opacity: 0.96;
+    border-radius: var(--dk-flow-connector-radius);
+    background: var(--dk-flow-connector-bg-horizontal);
+    clip-path: var(--dk-flow-connector-clip-horizontal);
+    opacity: var(--dk-flow-connector-opacity);
   }
 
   dk-flow[arrows="none"] dk-flow-step::after {
@@ -256,19 +281,11 @@ export const flowStyles = `
     top: calc(100% + 4px);
     right: auto;
     left: 50%;
-    width: clamp(16px, 1.6cqw, 24px);
+    width: var(--dk-flow-connector-thickness);
     height: calc(var(--dk-flow-gap-local) - 4px);
     transform: translateX(-50%);
-    background: linear-gradient(180deg, var(--dk-accent), rgba(57, 211, 83, 0.12));
-    clip-path: polygon(
-      38% 0,
-      62% 0,
-      62% calc(100% - var(--dk-flow-arrow-head)),
-      90% calc(100% - var(--dk-flow-arrow-head)),
-      50% 100%,
-      10% calc(100% - var(--dk-flow-arrow-head)),
-      38% calc(100% - var(--dk-flow-arrow-head))
-    );
+    background: var(--dk-flow-connector-bg-vertical);
+    clip-path: var(--dk-flow-connector-clip-vertical);
   }
 
   dk-flow[data-dk-orientation="vertical"] .dk-flow-step-label {
@@ -298,37 +315,21 @@ export const flowStyles = `
       top: calc(100% + 4px);
       right: auto;
       left: 50%;
-      width: clamp(16px, 1.6cqw, 24px);
+      width: var(--dk-flow-connector-thickness);
       height: calc(var(--dk-flow-gap-local) - 4px);
       transform: translateX(-50%);
-      background: linear-gradient(180deg, var(--dk-accent), rgba(57, 211, 83, 0.12));
-      clip-path: polygon(
-        38% 0,
-        62% 0,
-        62% calc(100% - var(--dk-flow-arrow-head)),
-        90% calc(100% - var(--dk-flow-arrow-head)),
-        50% 100%,
-        10% calc(100% - var(--dk-flow-arrow-head)),
-        38% calc(100% - var(--dk-flow-arrow-head))
-      );
+      background: var(--dk-flow-connector-bg-vertical);
+      clip-path: var(--dk-flow-connector-clip-vertical);
     }
 
     dk-flow[data-dk-orientation="horizontal"] dk-flow-step:not(:last-child)::after {
       top: 50%;
       left: calc(100% + 4px);
       width: calc(var(--dk-flow-gap-local) - 4px);
-      height: clamp(16px, 1.6cqw, 24px);
+      height: var(--dk-flow-connector-thickness);
       transform: translateY(-50%);
-      background: linear-gradient(90deg, var(--dk-accent), rgba(57, 211, 83, 0.12));
-      clip-path: polygon(
-        0 38%,
-        calc(100% - var(--dk-flow-arrow-head)) 38%,
-        calc(100% - var(--dk-flow-arrow-head)) 10%,
-        100% 50%,
-        calc(100% - var(--dk-flow-arrow-head)) 90%,
-        calc(100% - var(--dk-flow-arrow-head)) 62%,
-        0 62%
-      );
+      background: var(--dk-flow-connector-bg-horizontal);
+      clip-path: var(--dk-flow-connector-clip-horizontal);
     }
 
     dk-flow-step {

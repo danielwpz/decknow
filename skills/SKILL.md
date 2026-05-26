@@ -8,6 +8,30 @@ description: Create, edit, validate, inspect, comment-review, and build Decknow 
 Use Decknow to create AI-agent-editable HTML presentations with semantic `dk-*`
 elements and a local review loop.
 
+## Source Checkout Setup
+
+Work inside a Decknow source checkout:
+
+1. `cd decknow`
+2. Run `pnpm install` if dependencies are missing.
+3. Create or edit deck files inside the repository unless the user gives an
+   explicit external path. A safe scratch location is `.decknow-runs/<name>.html`.
+4. Use `pnpm exec decknow ...` from the repository root for dev, validate,
+   inspect, screenshot, comments, and build commands.
+
+When authoring a deck inside the repository, make the runtime script path
+relative to the deck file. For a deck at the repository root, use:
+
+```html
+<script src="./packages/runtime-standard/decknow.js"></script>
+```
+
+For a deck under `.decknow-runs/`, use:
+
+```html
+<script src="../packages/runtime-standard/decknow.js"></script>
+```
+
 ## Workflow
 
 1. Read the deck source, or create a new `.html` deck from the minimal pattern in
@@ -43,7 +67,7 @@ elements and a local review loop.
 - `references/authoring.md`: deck structure, core elements, layout attributes,
   and good markup patterns.
 - `references/cli.md`: command reference for dev, validate, inspect,
-  screenshot, comments, build, and skills installation.
+  screenshot, comments, build, and source-checkout command usage.
 - `references/comments.md`: browser comment mode and how to process comment
   rounds.
 - `references/verification.md`: validation, inspect, screenshot, responsive

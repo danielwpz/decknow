@@ -9,6 +9,8 @@ description: Use and maintain Decknow's built-in terminal-green theme. Use when 
 
 The theme owns visual tokens:
 
+- `colorScheme: "dark"` so runtime chrome can choose the correct built-in dark
+  treatment for navigation, comments, and system UI
 - colors and accents
 - typography tokens
 - spacing tokens

@@ -32,7 +32,10 @@ describe("diagram-basic plugin", () => {
     expect(summary.schema.elements).toHaveProperty("dk-flow");
     expect(summary.schema.elements).toHaveProperty("dk-pyramid");
     expect(env.customElements.get("dk-flow")).toBeDefined();
-    expect(env.document.getElementById("decknow-plugin-diagram-basic-flow-styles")).not.toBeNull();
+    const flowStyles = env.document.getElementById("decknow-plugin-diagram-basic-flow-styles");
+    expect(flowStyles).not.toBeNull();
+    expect(flowStyles.textContent).toContain("--dk-flow-connector-bg-horizontal");
+    expect(flowStyles.textContent).toContain("background: var(--dk-flow-connector-bg-horizontal)");
     expect(
       env.document.getElementById("decknow-plugin-diagram-basic-pyramid-styles")
     ).not.toBeNull();

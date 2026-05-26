@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@decknow/plugin-diagram-basic": "workspace:*",
+    "@decknow/plugin-theme-paper-ink": "workspace:*",
     "@decknow/plugin-theme-terminal-green": "workspace:*",
     "@decknow/runtime-standard": "workspace:*",
     "yargs": "^17.7.2"

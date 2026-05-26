@@ -17,7 +17,7 @@
     "dk-deck": {
       "description": "Root deck container.",
       "attributes": {
-        "theme": ["terminal-green"],
+        "theme": ["terminal-green", "paper-ink"],
         "aspect": ["16:9"],
         "fit": ["contain"],
         "swipe": ["auto", "none"],

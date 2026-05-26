@@ -1,5 +1,6 @@
 const PLUGIN_NAME_PATTERN = /^[a-z0-9][a-z0-9-:.]*$/;
 const ELEMENT_PREFIX_PATTERN = /^[a-z0-9][a-z0-9-]*-$/;
+const COLOR_SCHEMES = new Set(["dark", "light"]);
 const RESERVED_META_KEYS = new Set(["builtin", "official", "trusted"]);
 
 export function createPluginRegistry(environment = {}, options = {}) {
@@ -10,6 +11,7 @@ export function createPluginRegistry(environment = {}, options = {}) {
   const elementOwners = new Map();
   const selectableSelectors = new Set();
   const themeOwners = new Map();
+  const themeColorSchemes = new Map();
 
   function registerPlugin(plugin) {
     const record = normalizePlugin(plugin, { trusted: false });
@@ -43,6 +45,7 @@ export function createPluginRegistry(environment = {}, options = {}) {
         );
       }
       themeOwners.set(theme, record.name);
+      if (record.colorScheme) themeColorSchemes.set(theme, record.colorScheme);
     }
 
     const styleIds = injectPluginStyles(record);
@@ -161,12 +164,17 @@ export function createPluginRegistry(environment = {}, options = {}) {
     return Array.from(themeOwners.keys());
   }
 
+  function getThemeColorScheme(themeName) {
+    return themeColorSchemes.get(themeName) || null;
+  }
+
   function getManifest() {
     return {
       plugins: getPlugins(),
       elements: getElementNames(),
       selectable: getSelectableSelectors(),
       themes: getThemeNames(),
+      themeColorSchemes: Object.fromEntries(themeColorSchemes),
     };
   }
 
@@ -178,6 +186,7 @@ export function createPluginRegistry(environment = {}, options = {}) {
     getSelectableSelectors,
     getElementNames,
     getThemeNames,
+    getThemeColorScheme,
     getManifest,
   };
 }
@@ -196,6 +205,7 @@ export function normalizePlugin(plugin, options = {}) {
   }
 
   const elements = normalizeElements(plugin.elements);
+  const colorScheme = normalizeColorScheme(plugin.colorScheme);
   return {
     name: plugin.name,
     version: plugin.version || "0.0.0",
@@ -205,6 +215,7 @@ export function normalizePlugin(plugin, options = {}) {
     elements,
     selectable: normalizeStringList(plugin.selectable, Object.keys(elements)),
     themes: normalizeStringList(plugin.themes, []),
+    colorScheme,
     styles: normalizeStyles(plugin.styles),
     schema: plugin.schema || null,
     meta: sanitizeMeta(plugin.meta),
@@ -242,6 +253,15 @@ function normalizeStringList(value, fallback) {
   return [String(value)].filter(Boolean);
 }
 
+function normalizeColorScheme(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const scheme = String(value).toLowerCase();
+  if (!COLOR_SCHEMES.has(scheme)) {
+    throw new Error('Decknow plugin colorScheme must be "dark" or "light".');
+  }
+  return scheme;
+}
+
 function sanitizeMeta(meta) {
   if (!meta || typeof meta !== "object" || Array.isArray(meta)) return {};
   return Object.fromEntries(Object.entries(meta).filter(([key]) => !RESERVED_META_KEYS.has(key)));
@@ -257,6 +277,7 @@ function pluginSummary(record) {
     elements: Object.keys(record.elements),
     selectable: [...record.selectable],
     themes: [...record.themes],
+    colorScheme: record.colorScheme,
     styleIds: [...(record.styleIds || [])],
     schema: record.schema,
     meta: record.meta,

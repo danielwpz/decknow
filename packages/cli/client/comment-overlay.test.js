@@ -88,6 +88,9 @@ describe("comment overlay client", () => {
     expect(document.getElementById("decknow-comment-styles").textContent).toContain(
       '.dk-comment-round[data-dk-has-comments="true"] .dk-comment-submit'
     );
+    expect(document.getElementById("decknow-comment-styles").textContent).toContain(
+      'body[data-dk-color-scheme="light"] .dk-comment-overlay'
+    );
 
     click(window, document.querySelector(".dk-comment-exit"));
     expect(document.body.hasAttribute("data-dk-comment-mode")).toBe(false);

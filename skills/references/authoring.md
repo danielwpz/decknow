@@ -2,6 +2,10 @@
 
 ## Minimal Deck
 
+Choose the runtime path based on where the deck file lives. If the deck is at
+the repository root, use `./packages/runtime-standard/decknow.js`; if it is under
+`.decknow-runs/`, use `../packages/runtime-standard/decknow.js`.
+
 ```html
 <!doctype html>
 <html lang="en">
@@ -84,3 +88,12 @@ Full-width evidence table:
 
 Use `dk-raw reason="..."` only when the DSL cannot express the slide yet. If the
 same raw pattern repeats, promote it into a runtime or plugin capability.
+
+## Built-In Themes
+
+- `terminal-green`: default dark developer-tool theme.
+- `paper-ink`: light editorial theme for readable briefs and public-facing decks.
+
+Theme plugins declare only their abstract `colorScheme` (`dark` or `light`).
+Runtime chrome such as navigation dots and comment controls maps that scheme to
+the appropriate built-in system UI treatment.

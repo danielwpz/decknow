@@ -29,9 +29,11 @@ describe("terminal-green theme plugin", () => {
       elements: [],
       selectable: [],
       themes: ["terminal-green"],
+      colorScheme: "dark",
       styleIds: ["decknow-plugin-theme-terminal-green-tokens-styles"],
     });
     expect(registry.getThemeNames()).toEqual(["terminal-green"]);
+    expect(registry.getThemeColorScheme("terminal-green")).toBe("dark");
 
     const style = env.document.getElementById("decknow-plugin-theme-terminal-green-tokens-styles");
     expect(style).not.toBeNull();

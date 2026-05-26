@@ -1,4 +1,5 @@
 import { createDiagramBasicPlugin } from "@decknow/plugin-diagram-basic";
+import { createPaperInkThemePlugin } from "@decknow/plugin-theme-paper-ink";
 import { createTerminalGreenThemePlugin } from "@decknow/plugin-theme-terminal-green";
 import { createPluginRegistry } from "./plugin-registry.js";
 
@@ -18,7 +19,7 @@ const runtimeReady = new Promise((resolve) => {
 const pluginRegistry = createPluginRegistry(
   {},
   {
-    officialPluginNames: ["core", "theme:terminal-green", "diagram-basic"],
+    officialPluginNames: ["core", "theme:terminal-green", "theme:paper-ink", "diagram-basic"],
   }
 );
 
@@ -115,6 +116,12 @@ function createRuntimeApi() {
     },
     getSelectableSelectors() {
       return pluginRegistry.getSelectableSelectors();
+    },
+    getThemeColorScheme(themeName) {
+      return pluginRegistry.getThemeColorScheme(themeName);
+    },
+    getColorScheme() {
+      return runtimeState.activeDeck?.getColorScheme?.() || "dark";
     },
     getRuntimeManifest() {
       return pluginRegistry.getManifest();
@@ -1043,13 +1050,129 @@ const coreRuntimeStyles = `
       display: block;
       min-width: 0;
       min-height: 0;
+      color: var(--dk-slide-ink);
+      font-family: var(--dk-font-body);
+      font-size: var(--dk-text-size);
+      line-height: 1.42;
     }
 
     dk-raw[frame] {
       padding: var(--dk-region-pad);
       border: 1px dashed var(--dk-border);
       border-radius: 8px;
-      background: rgba(13, 17, 23, 0.38);
+      background: var(--dk-panel-surface-muted);
+    }
+
+    dk-raw > :first-child {
+      margin-top: 0;
+    }
+
+    dk-raw > :last-child {
+      margin-bottom: 0;
+    }
+
+    dk-raw :is(p, ul, ol, blockquote, pre, table, figure) {
+      margin-block: 0 var(--dk-stack-gap-sm);
+    }
+
+    dk-raw :is(ul, ol) {
+      padding-inline-start: 1.25em;
+    }
+
+    dk-raw li {
+      margin-block: 0.34em;
+      padding-inline-start: 0.15em;
+    }
+
+    dk-raw a {
+      color: var(--dk-accent);
+      font-weight: 700;
+      text-decoration-thickness: 0.12em;
+      text-underline-offset: 0.18em;
+      overflow-wrap: anywhere;
+    }
+
+    dk-raw :is(strong, b) {
+      font-weight: 850;
+    }
+
+    dk-raw :is(em, i) {
+      color: var(--dk-accent);
+    }
+
+    dk-raw code {
+      padding: 0.08em 0.34em;
+      border: 1px solid var(--dk-border);
+      border-radius: 5px;
+      background: var(--dk-inline-code-bg);
+      color: var(--dk-accent);
+      font-family: var(--dk-font-mono);
+      font-size: 0.9em;
+    }
+
+    dk-raw pre {
+      padding: clamp(14px, 1.8cqw, 24px);
+      overflow: auto;
+      border: 1px solid var(--dk-border);
+      border-radius: 8px;
+      background: var(--dk-code-bg);
+      color: var(--dk-code-ink);
+      font-family: var(--dk-font-mono);
+      font-size: var(--dk-code-size);
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    dk-raw pre code {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    dk-raw blockquote {
+      margin-inline: 0;
+      padding: clamp(12px, 1.8cqw, 24px);
+      border-left: clamp(4px, 0.6cqw, 8px) solid var(--dk-accent-2);
+      border-radius: 0 8px 8px 0;
+      background: var(--dk-quote-surface);
+    }
+
+    dk-raw table {
+      width: 100%;
+      overflow: hidden;
+      border: 1px solid var(--dk-border);
+      border-collapse: collapse;
+      border-radius: 8px;
+      background: var(--dk-table-surface);
+      font-size: var(--dk-cell-size);
+      line-height: 1.35;
+    }
+
+    dk-raw :is(th, td) {
+      padding: clamp(8px, 1.1cqw, 15px);
+      border: 1px solid var(--dk-border);
+      vertical-align: top;
+    }
+
+    dk-raw th {
+      background: var(--dk-table-header-surface);
+      color: var(--dk-accent);
+      font-weight: 800;
+    }
+
+    dk-raw hr {
+      width: 100%;
+      margin-block: var(--dk-stack-gap);
+      border: 0;
+      border-top: 1px solid var(--dk-border);
+    }
+
+    dk-raw :is(input, button, textarea, select) {
+      color: inherit;
+      font: inherit;
+      accent-color: var(--dk-accent);
     }
 
     dk-slide[layout="grid"] > dk-grid,
@@ -1058,6 +1181,14 @@ const coreRuntimeStyles = `
     }
 
     .dk-slide-dots {
+      --dk-chrome-dots-bg: rgba(1, 4, 9, 0.38);
+      --dk-chrome-dots-bg-visible: rgba(1, 4, 9, 0.56);
+      --dk-chrome-dots-border: rgba(139, 148, 158, 0.18);
+      --dk-chrome-dots-border-visible: rgba(139, 148, 158, 0.28);
+      --dk-chrome-dot-bg: rgba(139, 148, 158, 0.42);
+      --dk-chrome-dot-ring: rgba(240, 246, 252, 0.08);
+      --dk-chrome-dot-active-bg: linear-gradient(180deg, #39d353, #ff8f3d);
+      --dk-chrome-dot-active-shadow: 0 0 18px rgba(57, 211, 83, 0.34);
       position: fixed;
       top: 50%;
       right: clamp(14px, 2vw, 28px);
@@ -1068,9 +1199,9 @@ const coreRuntimeStyles = `
       align-items: center;
       gap: clamp(8px, 1.1vh, 14px);
       padding: 10px 8px;
-      border: 1px solid rgba(139, 148, 158, 0.18);
+      border: 1px solid var(--dk-chrome-dots-border);
       border-radius: 999px;
-      background: rgba(1, 4, 9, 0.38);
+      background: var(--dk-chrome-dots-bg);
       backdrop-filter: blur(10px);
       opacity: 0.14;
       filter: saturate(0.7);
@@ -1087,16 +1218,16 @@ const coreRuntimeStyles = `
       transform: translateY(-50%) translateX(0);
       opacity: 1;
       filter: saturate(1);
-      border-color: rgba(139, 148, 158, 0.28);
-      background: rgba(1, 4, 9, 0.56);
+      border-color: var(--dk-chrome-dots-border-visible);
+      background: var(--dk-chrome-dots-bg-visible);
     }
 
     .dk-slide-dot {
       width: clamp(6px, 0.72vw, 9px);
       height: clamp(6px, 0.72vw, 9px);
       border-radius: 999px;
-      background: rgba(139, 148, 158, 0.42);
-      box-shadow: 0 0 0 1px rgba(240, 246, 252, 0.08);
+      background: var(--dk-chrome-dot-bg);
+      box-shadow: 0 0 0 1px var(--dk-chrome-dot-ring);
       opacity: 0.72;
       transition:
         width 180ms ease,
@@ -1108,9 +1239,22 @@ const coreRuntimeStyles = `
 
     .dk-slide-dot[aria-current="true"] {
       height: clamp(18px, 2.6vh, 30px);
-      background: linear-gradient(180deg, var(--dk-accent), var(--dk-accent-2));
-      box-shadow: 0 0 18px rgba(57, 211, 83, 0.34);
+      background: var(--dk-chrome-dot-active-bg);
+      box-shadow: var(--dk-chrome-dot-active-shadow);
       opacity: 1;
+    }
+
+    dk-deck[data-dk-color-scheme="light"] .dk-slide-dots {
+      --dk-chrome-dots-bg: rgba(255, 250, 240, 0.48);
+      --dk-chrome-dots-bg-visible: rgba(255, 250, 240, 0.82);
+      --dk-chrome-dots-border: rgba(66, 52, 40, 0.16);
+      --dk-chrome-dots-border-visible: rgba(66, 52, 40, 0.26);
+      --dk-chrome-dot-bg: rgba(66, 52, 40, 0.28);
+      --dk-chrome-dot-ring: rgba(255, 255, 255, 0.72);
+      --dk-chrome-dot-active-bg: linear-gradient(180deg, #e3d8c4, #c9b79b);
+      --dk-chrome-dot-active-shadow: 0 0 0 1px rgba(255, 250, 240, 0.88),
+        0 0 0 2px rgba(154, 106, 31, 0.16),
+        0 8px 18px rgba(66, 52, 40, 0.14);
     }
 
     .dk-slide-dot__text {
@@ -1154,10 +1298,18 @@ const coreRuntimeStyles = `
         line-height: 1.32;
       }
 
+      dk-raw {
+        font-size: var(--dk-text-size-tablet);
+      }
+
       dk-code pre {
         font-size: var(--dk-code-size-tablet);
         line-height: 1.44;
         max-height: 34cqh;
+      }
+
+      dk-raw pre {
+        font-size: var(--dk-code-size-tablet);
       }
 
       dk-quote {
@@ -1166,7 +1318,8 @@ const coreRuntimeStyles = `
 
       dk-cell,
       dk-th,
-      dk-td {
+      dk-td,
+      dk-raw table {
         font-size: var(--dk-cell-size-tablet);
       }
 
@@ -1220,11 +1373,22 @@ const coreRuntimeStyles = `
         line-height: 1.24;
       }
 
+      dk-raw {
+        font-size: var(--dk-text-size-phone);
+        line-height: 1.32;
+      }
+
       dk-code pre {
         padding: clamp(8px, 2.4cqw, 14px);
         font-size: var(--dk-code-size-phone);
         line-height: 1.34;
         max-height: 30cqh;
+      }
+
+      dk-raw pre {
+        padding: clamp(8px, 2.4cqw, 14px);
+        font-size: var(--dk-code-size-phone);
+        line-height: 1.34;
       }
 
       dk-code[inline] code {
@@ -1247,6 +1411,15 @@ const coreRuntimeStyles = `
         padding: clamp(6px, 1.6cqw, 10px);
         font-size: var(--dk-cell-size-phone);
         line-height: 1.24;
+      }
+
+      dk-raw table {
+        font-size: var(--dk-cell-size-phone);
+        line-height: 1.24;
+      }
+
+      dk-raw :is(th, td) {
+        padding: clamp(6px, 1.6cqw, 10px);
       }
 
       dk-stack[direction="horizontal"]:not([responsive="none"]) {
@@ -1374,7 +1547,19 @@ function hasTextSelection() {
   return Boolean(selection && !selection.isCollapsed && selection.toString().trim());
 }
 
+function normalizeColorScheme(value) {
+  return value === "light" ? "light" : "dark";
+}
+
 class DKDeck extends HTMLElement {
+  static get observedAttributes() {
+    return ["theme"];
+  }
+
+  attributeChangedCallback() {
+    this.syncColorScheme();
+  }
+
   connectedCallback() {
     if (this.dataset.dkScheduled === "true") return;
     this.dataset.dkScheduled = "true";
@@ -1392,6 +1577,7 @@ class DKDeck extends HTMLElement {
     this.currentStep = 0;
     this.slides = Array.from(this.querySelectorAll(":scope > dk-slide"));
     if (!this.hasAttribute("tabindex")) this.setAttribute("tabindex", "0");
+    this.syncColorScheme();
     this.ensureSlideDots();
     this.ensureDebugPanel();
     this.setupKeyboard();
@@ -1401,9 +1587,26 @@ class DKDeck extends HTMLElement {
 
     runtimeState.decks.push(this);
     runtimeState.activeDeck = this;
+    this.syncColorScheme();
     runtimeState.resolveReady?.(this);
     document.dispatchEvent(new CustomEvent("decknow:ready", { detail: { deck: this } }));
     debugLog("ready", this.screenshotState());
+  }
+
+  getColorScheme() {
+    const theme = this.getAttribute("theme") || "terminal-green";
+    return normalizeColorScheme(pluginRegistry.getThemeColorScheme(theme));
+  }
+
+  syncColorScheme() {
+    const scheme = this.getColorScheme();
+    this.dataset.dkColorScheme = scheme;
+    this.style.colorScheme = scheme;
+    if (!runtimeState.activeDeck || runtimeState.activeDeck === this) {
+      document.documentElement.dataset.dkColorScheme = scheme;
+      document.body.dataset.dkColorScheme = scheme;
+    }
+    return scheme;
   }
 
   readInitialSlide() {
@@ -1670,6 +1873,7 @@ class DKDeck extends HTMLElement {
     const target = Math.max(0, Math.min(this.slides.length - 1, Number(index) || 0));
     this.currentSlide = target;
     this.currentStep = 0;
+    this.syncColorScheme();
 
     this.slides.forEach((slide, slideIndex) => {
       const active = slideIndex === target;
@@ -1728,6 +1932,7 @@ class DKDeck extends HTMLElement {
       step: this.currentStep,
       slideCount: this.getSlideCount(),
       theme: this.getAttribute("theme") || "terminal-green",
+      colorScheme: this.getColorScheme(),
       fit: this.getAttribute("fit") || "contain",
       viewport: {
         width: window.innerWidth,
@@ -1917,6 +2122,7 @@ const coreSelectableElements = [
 ];
 
 pluginRegistry.registerBuiltInPlugin(createTerminalGreenThemePlugin(DECKNOW_VERSION));
+pluginRegistry.registerBuiltInPlugin(createPaperInkThemePlugin(DECKNOW_VERSION));
 
 pluginRegistry.registerBuiltInPlugin({
   name: "core",

@@ -1,7 +1,7 @@
 # CLI Reference
 
-Use `pnpm exec decknow <command>` inside this repository or any project where the
-Decknow CLI is installed.
+Use `pnpm exec decknow <command>` from the Decknow source repository root. Run
+`pnpm install` first when dependencies are missing.
 
 ## Core Commands
 

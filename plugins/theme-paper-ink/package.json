@@ -1,0 +1,13 @@
+{
+  "name": "@decknow/plugin-theme-paper-ink",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Built-in Paper & Ink light theme plugin for Decknow decks.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src/index.js"
+  ]
+}

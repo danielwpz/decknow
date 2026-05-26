@@ -464,11 +464,62 @@
     style.id = "decknow-comment-styles";
     style.textContent = `
       .dk-comment-overlay {
+        --dk-comment-surface: rgba(1, 4, 9, 0.94);
+        --dk-comment-surface-strong: rgba(1, 4, 9, 0.95);
+        --dk-comment-surface-soft: rgba(13, 17, 23, 0.9);
+        --dk-comment-ink: #f0f6fc;
+        --dk-comment-muted: #8b949e;
+        --dk-comment-border: rgba(139, 148, 158, 0.28);
+        --dk-comment-control-bg: rgba(13, 17, 23, 0.86);
+        --dk-comment-accent: #39d353;
+        --dk-comment-accent-ink: #06150a;
+        --dk-comment-accent-soft: rgba(57, 211, 83, 0.16);
+        --dk-comment-accent-line: rgba(57, 211, 83, 0.44);
+        --dk-comment-active: #ff8f3d;
+        --dk-comment-active-soft: rgba(255, 143, 61, 0.2);
+        --dk-comment-toggle-bg:
+          linear-gradient(135deg, rgba(57, 211, 83, 0.22), rgba(1, 4, 9, 0.94) 58%),
+          rgba(1, 4, 9, 0.92);
+        --dk-comment-toggle-active-bg:
+          linear-gradient(135deg, rgba(255, 143, 61, 0.2), rgba(1, 4, 9, 0.94) 58%),
+          rgba(1, 4, 9, 0.92);
+        --dk-comment-round-bg:
+          linear-gradient(135deg, rgba(57, 211, 83, 0.14), rgba(1, 4, 9, 0.95) 44%),
+          rgba(1, 4, 9, 0.94);
+        --dk-comment-ring: rgba(1, 4, 9, 0.9);
+        --dk-comment-shadow: 0 18px 56px rgba(0, 0, 0, 0.4);
         position: fixed;
         inset: 0;
         z-index: 100000;
         pointer-events: none;
         font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body[data-dk-color-scheme="light"] .dk-comment-overlay {
+        --dk-comment-surface: rgba(255, 250, 240, 0.96);
+        --dk-comment-surface-strong: rgba(255, 250, 240, 0.98);
+        --dk-comment-surface-soft: rgba(247, 241, 231, 0.94);
+        --dk-comment-ink: #231c16;
+        --dk-comment-muted: #74685d;
+        --dk-comment-border: rgba(66, 52, 40, 0.22);
+        --dk-comment-control-bg: rgba(255, 253, 248, 0.9);
+        --dk-comment-accent: #9a6a1f;
+        --dk-comment-accent-ink: #fffaf0;
+        --dk-comment-accent-soft: rgba(154, 106, 31, 0.13);
+        --dk-comment-accent-line: rgba(154, 106, 31, 0.38);
+        --dk-comment-active: #b42318;
+        --dk-comment-active-soft: rgba(180, 35, 24, 0.12);
+        --dk-comment-toggle-bg:
+          linear-gradient(135deg, rgba(154, 106, 31, 0.14), rgba(255, 250, 240, 0.98) 58%),
+          rgba(255, 250, 240, 0.96);
+        --dk-comment-toggle-active-bg:
+          linear-gradient(135deg, rgba(180, 35, 24, 0.12), rgba(255, 250, 240, 0.98) 58%),
+          rgba(255, 250, 240, 0.96);
+        --dk-comment-round-bg:
+          linear-gradient(135deg, rgba(154, 106, 31, 0.1), rgba(255, 250, 240, 0.98) 44%),
+          rgba(255, 250, 240, 0.96);
+        --dk-comment-ring: rgba(255, 250, 240, 0.9);
+        --dk-comment-shadow: 0 18px 46px rgba(66, 52, 40, 0.18);
       }
 
       .dk-comment-toggle,
@@ -489,17 +540,15 @@
         min-width: 118px;
         height: 46px;
         padding: 0 14px 0 9px;
-        border: 1px solid rgba(57, 211, 83, 0.58);
+        border: 1px solid var(--dk-comment-accent-line);
         border-radius: 999px;
-        background:
-          linear-gradient(135deg, rgba(57, 211, 83, 0.22), rgba(1, 4, 9, 0.94) 58%),
-          rgba(1, 4, 9, 0.92);
-        color: #d9ffe9;
+        background: var(--dk-comment-toggle-bg);
+        color: var(--dk-comment-ink);
         font: 700 13px/1 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         box-shadow:
-          0 0 0 1px rgba(1, 4, 9, 0.86),
-          0 16px 44px rgba(0, 0, 0, 0.38),
-          0 0 24px rgba(57, 211, 83, 0.18);
+          0 0 0 1px var(--dk-comment-ring),
+          var(--dk-comment-shadow),
+          0 0 24px var(--dk-comment-accent-soft);
         cursor: pointer;
       }
 
@@ -509,10 +558,10 @@
         width: 28px;
         height: 28px;
         border-radius: 999px;
-        background: #39d353;
-        color: #06150a;
+        background: var(--dk-comment-accent);
+        color: var(--dk-comment-accent-ink);
         font: 850 14px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
-        box-shadow: 0 0 18px rgba(57, 211, 83, 0.28);
+        box-shadow: 0 0 18px var(--dk-comment-accent-soft);
       }
 
       .dk-comment-toggle__label {
@@ -521,15 +570,13 @@
       }
 
       .dk-comment-toggle[data-dk-active="true"] {
-        border-color: rgba(255, 143, 61, 0.6);
-        background:
-          linear-gradient(135deg, rgba(255, 143, 61, 0.2), rgba(1, 4, 9, 0.94) 58%),
-          rgba(1, 4, 9, 0.92);
+        border-color: var(--dk-comment-active);
+        background: var(--dk-comment-toggle-active-bg);
       }
 
       .dk-comment-toggle[data-dk-active="true"] .dk-comment-toggle__mark {
-        background: #ff8f3d;
-        box-shadow: 0 0 18px rgba(255, 143, 61, 0.28);
+        background: var(--dk-comment-active);
+        box-shadow: 0 0 18px var(--dk-comment-active-soft);
       }
 
       .dk-comment-highlight {
@@ -563,11 +610,11 @@
         display: grid;
         gap: 10px;
         padding: 14px;
-        border: 1px solid rgba(139, 148, 158, 0.28);
+        border: 1px solid var(--dk-comment-border);
         border-radius: 8px;
-        background: rgba(1, 4, 9, 0.94);
-        color: #f0f6fc;
-        box-shadow: 0 20px 70px rgba(0, 0, 0, 0.42);
+        background: var(--dk-comment-surface);
+        color: var(--dk-comment-ink);
+        box-shadow: var(--dk-comment-shadow);
       }
 
       .dk-comment-panel[hidden],
@@ -589,7 +636,7 @@
       }
 
       .dk-comment-target {
-        color: #8b949e;
+        color: var(--dk-comment-muted);
         font-size: 12px;
         line-height: 1.35;
       }
@@ -598,10 +645,10 @@
         min-height: 92px;
         resize: vertical;
         padding: 10px;
-        border: 1px solid rgba(139, 148, 158, 0.32);
+        border: 1px solid var(--dk-comment-border);
         border-radius: 6px;
-        background: rgba(13, 17, 23, 0.9);
-        color: #f0f6fc;
+        background: var(--dk-comment-surface-soft);
+        color: var(--dk-comment-ink);
         font-family: inherit;
         font-size: 14px;
         line-height: 1.45;
@@ -610,10 +657,10 @@
       .dk-comment-panel button,
       .dk-comment-round button {
         flex: 0 0 auto;
-        border: 1px solid rgba(139, 148, 158, 0.28);
+        border: 1px solid var(--dk-comment-border);
         border-radius: 6px;
-        background: rgba(13, 17, 23, 0.86);
-        color: #f0f6fc;
+        background: var(--dk-comment-control-bg);
+        color: var(--dk-comment-ink);
         font-family: inherit;
         font-size: 12px;
         font-weight: 600;
@@ -624,8 +671,8 @@
 
       .dk-comment-save,
       .dk-comment-submit {
-        border-color: rgba(57, 211, 83, 0.44) !important;
-        color: #d9ffe9 !important;
+        border-color: var(--dk-comment-accent-line) !important;
+        color: var(--dk-comment-accent) !important;
       }
 
       .dk-comment-round {
@@ -639,16 +686,14 @@
         align-items: center;
         gap: 10px;
         padding: 12px;
-        border: 1px solid rgba(57, 211, 83, 0.34);
+        border: 1px solid var(--dk-comment-accent-line);
         border-radius: 10px;
-        background:
-          linear-gradient(135deg, rgba(57, 211, 83, 0.14), rgba(1, 4, 9, 0.95) 44%),
-          rgba(1, 4, 9, 0.94);
-        color: #f0f6fc;
+        background: var(--dk-comment-round-bg);
+        color: var(--dk-comment-ink);
         box-shadow:
-          0 0 0 1px rgba(1, 4, 9, 0.9),
-          0 18px 56px rgba(0, 0, 0, 0.4),
-          0 0 28px rgba(57, 211, 83, 0.12);
+          0 0 0 1px var(--dk-comment-ring),
+          var(--dk-comment-shadow),
+          0 0 28px var(--dk-comment-accent-soft);
         font-size: 12px;
       }
 
@@ -660,26 +705,26 @@
       }
 
       .dk-comment-round__copy strong {
-        color: #d9ffe9;
+        color: var(--dk-comment-accent);
         font-size: 13px;
         line-height: 1.1;
       }
 
       .dk-comment-count {
-        color: #8b949e;
+        color: var(--dk-comment-muted);
         line-height: 1.2;
       }
 
       .dk-comment-submit {
         padding: 10px 12px !important;
-        background: rgba(57, 211, 83, 0.16) !important;
-        box-shadow: inset 0 0 0 1px rgba(57, 211, 83, 0.1);
+        background: var(--dk-comment-accent-soft) !important;
+        box-shadow: inset 0 0 0 1px var(--dk-comment-accent-soft);
       }
 
       .dk-comment-round[data-dk-has-comments="true"] .dk-comment-submit {
-        background: #39d353 !important;
-        border-color: #39d353 !important;
-        color: #06150a !important;
+        background: var(--dk-comment-accent) !important;
+        border-color: var(--dk-comment-accent) !important;
+        color: var(--dk-comment-accent-ink) !important;
       }
 
       .dk-comment-toast {
@@ -690,12 +735,12 @@
         z-index: 5;
         max-width: min(520px, calc(100vw - 36px));
         padding: 10px 12px;
-        border: 1px solid rgba(57, 211, 83, 0.28);
+        border: 1px solid var(--dk-comment-accent-line);
         border-radius: 999px;
-        background: rgba(1, 4, 9, 0.9);
-        color: #d9ffe9;
+        background: var(--dk-comment-surface-strong);
+        color: var(--dk-comment-accent);
         font-size: 13px;
-        box-shadow: 0 16px 44px rgba(0, 0, 0, 0.34);
+        box-shadow: var(--dk-comment-shadow);
       }
     `;
     document.head.appendChild(style);

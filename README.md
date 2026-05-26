@@ -21,16 +21,16 @@ Decknow treats a deck as source code:
 - single-file HTML builds for easy sharing
 - repo-local plugin packages for themes and components
 
-## Copy This
+## How to use
 
-Install the agent skills into your project:
+Give this to your AI coding agent:
 
-```bash
-pnpm exec decknow skills install
-```
+```text
+Clone https://github.com/danielwpz/decknow.git, then read
+`decknow/skills/SKILL.md` and follow it.
 
-Then give this to your AI coding agent:
-
-```txt
-Read `./skills/decknow/SKILL.md` and follow it. Use Decknow to create or edit my slide deck as semantic `dk-*` HTML, validate and inspect it with `pnpm exec decknow`, process browser comments when present, and build a single self-contained HTML file when ready.
+Use Decknow to create or edit my slide deck as semantic `dk-*` HTML.
+Run the dev server so I can review and leave browser comments.
+Validate and inspect the deck before reporting done.
+Build a single self-contained HTML file when ready.
 ```
