@@ -75,6 +75,10 @@ draft and use the browser comment loop to refine it with the user.
    pnpm exec decknow build path/to/deck.html --out dist/deck.html
    ```
 
+7. If the user wants a web link for the finished deck, read
+   `references/publishing.md` and publish the built deck through `lark-cli apps`
+   when that CLI is available.
+
 ## Read References As Needed
 
 - `references/authoring.md`: deck structure, core elements, layout attributes,
@@ -83,6 +87,8 @@ draft and use the browser comment loop to refine it with the user.
   screenshot, comments, build, and source-checkout command usage.
 - `references/comments.md`: browser comment mode and how to process comment
   rounds.
+- `references/publishing.md`: optional Feishu/Lark Miaoda publishing flow for
+  turning a built deck into a web-accessible link.
 - `references/verification.md`: validation, inspect, screenshot, responsive
   checks, and single-file build checks.
 - `references/system-fixes.md`: when to fix the deck versus runtime, theme,
