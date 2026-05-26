@@ -1,5 +1,7 @@
 # Decknow
 
+![Decknow example deck capability slide](docs/assets/decknow-basic-slide-001.png)
+
 Decknow is an AI-native slide deck runtime.
 
 It turns presentations into semantic HTML that coding agents can write, diff,

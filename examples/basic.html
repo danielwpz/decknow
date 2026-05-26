@@ -8,11 +8,38 @@
   </head>
   <body>
     <dk-deck theme="terminal-green" fit="contain">
-      <dk-slide layout="hero" align="left">
-        <dk-title>AI Native HTML Slides</dk-title>
-        <dk-subtitle>
-          A constrained, inspectable runtime for AI-generated presentation decks.
-        </dk-subtitle>
+      <dk-slide layout="grid" align="left" content-width="full">
+        <dk-grid columns="2" gap="lg" align="stretch">
+          <dk-region valign="center">
+            <dk-title>Decknow</dk-title>
+            <dk-subtitle>
+              AI-native HTML slides that coding agents can write, inspect, comment on, and build.
+            </dk-subtitle>
+            <dk-list marker="status">
+              <dk-item tone="success">structured slide source</dk-item>
+              <dk-item tone="success">browser comments for human review</dk-item>
+              <dk-item tone="success">single-file HTML distribution</dk-item>
+            </dk-list>
+          </dk-region>
+
+          <dk-region frame tone="accent" valign="center">
+            <dk-heading level="3">Agent workflow</dk-heading>
+            <dk-flow direction="vertical" density="high">
+              <dk-flow-step>
+                <dk-heading level="4">Declare</dk-heading>
+                <dk-text>Use grids, text, tables, and diagrams as semantic elements.</dk-text>
+              </dk-flow-step>
+              <dk-flow-step tone="accent">
+                <dk-heading level="4">Inspect</dk-heading>
+                <dk-text>Render real browser layout and collect point comments.</dk-text>
+              </dk-flow-step>
+              <dk-flow-step emphasis>
+                <dk-heading level="4">Build</dk-heading>
+                <dk-text>Ship one self-contained HTML deck.</dk-text>
+              </dk-flow-step>
+            </dk-flow>
+          </dk-region>
+        </dk-grid>
       </dk-slide>
 
       <dk-slide layout="default">
