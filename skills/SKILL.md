@@ -32,6 +32,19 @@ For a deck under `.decknow-runs/`, use:
 <script src="../packages/runtime-standard/decknow.js"></script>
 ```
 
+## Content Ownership
+
+Decknow is a deck authoring tool. It helps turn the user's ideas, source
+materials, and review feedback into a presentation; it is not the source of the
+deck's business facts, thesis, metrics, or citations.
+
+Use content supplied by the user, existing deck/source files, or assumptions the
+user has explicitly confirmed. If the goal, audience, narrative, or source
+material is missing, ask the user for the minimum information needed before
+authoring. Do not invent facts, metrics, customers, funding numbers, quotes, or
+citations. For incomplete but non-blocking details, create a clearly reviewable
+draft and use the browser comment loop to refine it with the user.
+
 ## Workflow
 
 1. Read the deck source, or create a new `.html` deck from the minimal pattern in

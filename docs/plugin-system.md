@@ -101,7 +101,7 @@ Third-party plugins should use their own vendor prefix:
 
 ```html
 <acme-org-chart>
-  <acme-org-person>Daniel</acme-org-person>
+  <acme-org-person>Team Member</acme-org-person>
 </acme-org-chart>
 ```
 
