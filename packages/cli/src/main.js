@@ -216,9 +216,13 @@ function readPackageJson(packageRoot) {
 }
 
 function normalizeSkillDeclarations(packageJson, packageRoot) {
-  const declarations = packageJson.decknow?.skills || [];
-  if (!Array.isArray(declarations)) {
-    throw new Error(`Package ${packageJson.name || packageRoot} has invalid decknow.skills.`);
+  const declarations = [];
+  if (packageJson.decknow?.skill) declarations.push(packageJson.decknow.skill);
+  if (packageJson.decknow?.skills) {
+    if (!Array.isArray(packageJson.decknow.skills)) {
+      throw new Error(`Package ${packageJson.name || packageRoot} has invalid decknow.skills.`);
+    }
+    declarations.push(...packageJson.decknow.skills);
   }
 
   return declarations.map((declaration) => {
@@ -228,12 +232,13 @@ function normalizeSkillDeclarations(packageJson, packageRoot) {
       );
     }
 
-    const source = path.resolve(packageRoot, declaration.path);
-    if (!isPathInside(source, packageRoot)) {
+    const declaredSource = path.resolve(packageRoot, declaration.path);
+    if (!isPathInside(declaredSource, packageRoot)) {
       throw new Error(
         `Package ${packageJson.name || packageRoot} declares a skill outside the package root.`
       );
     }
+    const source = resolveSkillSource(packageJson, declaration, declaredSource);
 
     return {
       name: declaration.name || path.basename(source),
@@ -241,6 +246,18 @@ function normalizeSkillDeclarations(packageJson, packageRoot) {
       source,
     };
   });
+}
+
+function resolveSkillSource(packageJson, declaration, declaredSource) {
+  const isCliRootSkill = packageJson.name === "@decknow/cli" && declaration.path === "skills";
+  const sourceRootSkill = path.join(workspaceRoot, "skills");
+  if (isCliRootSkill && fs.existsSync(path.join(sourceRootSkill, "SKILL.md"))) {
+    return sourceRootSkill;
+  }
+
+  if (fs.existsSync(path.join(declaredSource, "SKILL.md"))) return declaredSource;
+
+  return declaredSource;
 }
 
 function decknowDependencyNames(packageJson) {
@@ -252,8 +269,12 @@ function decknowDependencyNames(packageJson) {
 
 function resolvePackageRoot(packageName, fromPackageRoot) {
   const fromRequire = createRequire(path.join(fromPackageRoot, "package.json"));
-  const entryPath = fromRequire.resolve(packageName);
-  return findPackageRoot(entryPath);
+  try {
+    return path.dirname(fromRequire.resolve(`${packageName}/package.json`));
+  } catch {
+    const entryPath = fromRequire.resolve(packageName);
+    return findPackageRoot(entryPath);
+  }
 }
 
 function findPackageRoot(startPath) {

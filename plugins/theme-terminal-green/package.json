@@ -9,14 +9,12 @@
   },
   "files": [
     "src/index.js",
-    "skills"
+    "skill"
   ],
   "decknow": {
-    "skills": [
-      {
-        "name": "decknow-theme-terminal-green",
-        "path": "skills/decknow-theme-terminal-green"
-      }
-    ]
+    "skill": {
+      "name": "decknow-theme-terminal-green",
+      "path": "skill"
+    }
   }
 }

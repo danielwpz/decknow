@@ -172,7 +172,8 @@ describe("cli core", () => {
   it("discovers and installs package-declared skills", () => {
     const targetRoot = path.join(makeTempDir(), "skills");
 
-    const discoveredSkillNames = discoverSkills().map((skill) => skill.name);
+    const discoveredSkills = discoverSkills();
+    const discoveredSkillNames = discoveredSkills.map((skill) => skill.name);
     const result = installSkills({ dir: targetRoot });
 
     expect(discoveredSkillNames).toEqual([
@@ -180,6 +181,27 @@ describe("cli core", () => {
       "decknow-plugin-diagram-basic",
       "decknow-theme-terminal-green",
     ]);
+    expect(
+      Object.fromEntries(discoveredSkills.map((skill) => [skill.name, path.basename(skill.source)]))
+    ).toEqual({
+      decknow: "skills",
+      "decknow-plugin-diagram-basic": "skill",
+      "decknow-theme-terminal-green": "skill",
+    });
+    const sourcesByName = Object.fromEntries(
+      discoveredSkills.map((skill) => [skill.name, skill.source])
+    );
+    expect(sourcesByName.decknow.endsWith("skills")).toBe(true);
+    expect(
+      sourcesByName["decknow-plugin-diagram-basic"].endsWith(
+        path.join("plugins", "diagram-basic", "skill")
+      )
+    ).toBe(true);
+    expect(
+      sourcesByName["decknow-theme-terminal-green"].endsWith(
+        path.join("plugins", "theme-terminal-green", "skill")
+      )
+    ).toBe(true);
     expect(result.skills.map((skill) => skill.name)).toEqual(discoveredSkillNames);
 
     for (const skillName of discoveredSkillNames) {

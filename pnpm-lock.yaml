@@ -32,6 +32,12 @@ importers:
 
   packages/cli:
     dependencies:
+      '@decknow/plugin-diagram-basic':
+        specifier: workspace:*
+        version: link:../../plugins/diagram-basic
+      '@decknow/plugin-theme-terminal-green':
+        specifier: workspace:*
+        version: link:../../plugins/theme-terminal-green
       '@decknow/runtime-standard':
         specifier: workspace:*
         version: link:../runtime-standard

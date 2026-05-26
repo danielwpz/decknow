@@ -1,5 +1,8 @@
 node_modules/
 .decknow-runs/
-/skills/
+/skills/decknow/
+/skills/decknow-plugin-*/
+/skills/decknow-theme-*/
+/packages/cli/skills/
 dist/
 .DS_Store

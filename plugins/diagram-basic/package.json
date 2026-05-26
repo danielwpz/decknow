@@ -11,14 +11,12 @@
     "src/flow.js",
     "src/index.js",
     "src/pyramid.js",
-    "skills"
+    "skill"
   ],
   "decknow": {
-    "skills": [
-      {
-        "name": "decknow-plugin-diagram-basic",
-        "path": "skills/decknow-plugin-diagram-basic"
-      }
-    ]
+    "skill": {
+      "name": "decknow-plugin-diagram-basic",
+      "path": "skill"
+    }
   }
 }
