@@ -178,7 +178,7 @@ const coreRuntimeStyles = `
       user-select: text;
       -webkit-user-select: text;
       overscroll-behavior: none;
-      touch-action: pan-x pinch-zoom;
+      touch-action: none;
     }
 
     dk-slide {
@@ -1447,11 +1447,21 @@ const coreRuntimeStyles = `
 
       dk-grid:not([responsive="none"]) {
         --dk-grid-layout-columns: 1;
+        grid-template-rows: none !important;
         grid-auto-rows: minmax(0, auto);
+      }
+
+      dk-grid:not([responsive="none"]) > dk-region {
+        grid-column: auto;
       }
 
       dk-grid:not([responsive="none"])[phone-columns="2"] {
         --dk-grid-layout-columns: 2;
+      }
+
+      dk-grid:not([responsive="none"])[phone-columns="2"]
+        > dk-region:is([span="2"], [span="3"], [span="4"], [span="5"], [span="6"]) {
+        grid-column: span 2;
       }
 
       .dk-slide-dots {
@@ -1783,7 +1793,7 @@ class DKDeck extends HTMLElement {
           swipe.intent = absX > absY * 1.25 ? "horizontal" : "vertical";
         }
 
-        if (swipe.intent === "vertical" && event.cancelable) {
+        if (swipe.intent && event.cancelable) {
           event.preventDefault();
         }
       },
@@ -1800,21 +1810,34 @@ class DKDeck extends HTMLElement {
         const absX = Math.abs(dx);
         const absY = Math.abs(dy);
         const elapsed = performance.now() - swipe.startedAt;
-        const threshold = Math.max(44, Math.min(96, window.innerHeight * 0.07));
-        const isSwipe = absY >= threshold && absY > absX * 1.25 && elapsed < 1200;
+        const threshold = Math.max(
+          44,
+          Math.min(96, Math.min(window.innerWidth, window.innerHeight) * 0.12)
+        );
+        const isHorizontal = absX >= threshold && absX > absY * 1.25;
+        const isVertical = absY >= threshold && absY > absX * 1.25;
+        const isSwipe = (isHorizontal || isVertical) && elapsed < 1200;
+        const direction = isHorizontal
+          ? dx < 0
+            ? "next"
+            : "previous"
+          : dy < 0
+            ? "next"
+            : "previous";
 
         resetSwipe();
 
         if (!isSwipe || hasTextSelection()) return;
         debugLog("swipe", {
-          direction: dy < 0 ? "next" : "previous",
+          axis: isHorizontal ? "horizontal" : "vertical",
+          direction,
           dx: Math.round(dx),
           dy: Math.round(dy),
           elapsed: Math.round(elapsed),
           threshold: Math.round(threshold),
         });
 
-        if (dy < 0) {
+        if (direction === "next") {
           this.next();
         } else {
           this.previous();

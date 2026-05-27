@@ -126,6 +126,47 @@ describe("standard runtime plugin bootstrap", () => {
     expect(coreStyles).toContain("@media (min-width: 641px) and (orientation: portrait)");
     expect(coreStyles).toContain("--dk-stage-aspect: 3 / 4");
   });
+
+  it("collapses desktop grid spans and row templates in portrait phone layouts", async () => {
+    const env = installDom();
+
+    await import("./decknow.js");
+
+    const coreStyles =
+      env.document.getElementById("decknow-plugin-core-runtime-styles")?.textContent || "";
+    expect(coreStyles).toContain("grid-template-rows: none !important");
+    expect(coreStyles).toContain('dk-grid:not([responsive="none"]) > dk-region');
+    expect(coreStyles).toContain('dk-grid:not([responsive="none"])[phone-columns="2"]');
+    expect(coreStyles).toContain('> dk-region:is([span="2"], [span="3"], [span="4"]');
+  });
+
+  it("supports horizontal and vertical touch swipe navigation", async () => {
+    const env = installDom();
+
+    await import("./decknow.js");
+
+    env.document.body.innerHTML = `
+      <dk-deck>
+        <dk-slide><dk-title>One</dk-title></dk-slide>
+        <dk-slide><dk-title>Two</dk-title></dk-slide>
+        <dk-slide><dk-title>Three</dk-title></dk-slide>
+      </dk-deck>
+    `;
+    const deck = env.document.querySelector("dk-deck");
+    deck.mount();
+
+    swipe(deck, { fromX: 320, fromY: 400, toX: 120, toY: 404 });
+    expect(deck.currentSlide).toBe(1);
+
+    swipe(deck, { fromX: 120, fromY: 400, toX: 320, toY: 396 });
+    expect(deck.currentSlide).toBe(0);
+
+    swipe(deck, { fromX: 200, fromY: 620, toX: 204, toY: 360 });
+    expect(deck.currentSlide).toBe(1);
+
+    swipe(deck, { fromX: 200, fromY: 360, toX: 196, toY: 620 });
+    expect(deck.currentSlide).toBe(0);
+  });
 });
 
 function installDom() {
@@ -143,6 +184,7 @@ function installDom() {
   vi.stubGlobal("MutationObserver", window.MutationObserver);
   vi.stubGlobal("ResizeObserver", TestResizeObserver);
   vi.stubGlobal("CustomEvent", window.CustomEvent);
+  vi.stubGlobal("PointerEvent", window.PointerEvent || window.MouseEvent);
   vi.stubGlobal("requestAnimationFrame", (callback) => {
     callback();
     return 1;
@@ -156,4 +198,35 @@ class TestResizeObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
+}
+
+function swipe(deck, { fromX, fromY, toX, toY }) {
+  const pointer = {
+    bubbles: true,
+    cancelable: true,
+    pointerId: 1,
+    pointerType: "touch",
+    isPrimary: true,
+  };
+  deck.dispatchEvent(
+    new PointerEvent("pointerdown", {
+      ...pointer,
+      clientX: fromX,
+      clientY: fromY,
+    })
+  );
+  deck.dispatchEvent(
+    new PointerEvent("pointermove", {
+      ...pointer,
+      clientX: toX,
+      clientY: toY,
+    })
+  );
+  deck.dispatchEvent(
+    new PointerEvent("pointerup", {
+      ...pointer,
+      clientX: toX,
+      clientY: toY,
+    })
+  );
 }
